@@ -324,6 +324,10 @@
           <label>Tiempo total en trading</label>
           <input id="na-tiempo-trading" type="text" />
         </div>
+        <div class="field">
+          <label>Fecha de alta</label>
+          <input id="na-fecha-alta" type="date" />
+        </div>
       </div>
 
       <div class="upload-box" id="upload-box">
@@ -372,6 +376,13 @@
   <div class="modal-box">
     <button class="modal-close" id="modal-close-btn">✕</button>
     <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- Modal para elegir fechas al cambiar de etapa -->
+<div class="modal-overlay" id="date-modal" hidden>
+  <div class="modal-box" style="max-width:380px;">
+    <div id="date-modal-content"></div>
   </div>
 </div>
 
@@ -465,6 +476,17 @@ function addMonthsIso(iso, months) {
   d.setMonth(d.getMonth() + months);
   return d.toISOString();
 }
+// Convierte un valor de <input type="date"> ("YYYY-MM-DD") a ISO, fijando
+// mediodía para evitar que el cambio de zona horaria desplace el día.
+function dateInputToIso(dateStr) {
+  return new Date(`${dateStr}T12:00:00`).toISOString();
+}
+function isoToDateInput(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function todayDateInput() { return isoToDateInput(nowIso()); }
 function fmtDate(iso) {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
@@ -481,6 +503,55 @@ function fmtCountdown(iso) {
 }
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ============================================================================
+// DIÁLOGO PARA ELEGIR FECHAS (al avanzar de etapa, o para reprogramar)
+// fields: [{ id, label, value }]
+// options.autoLink: { sourceId, targetId, transform } — cuando cambia el campo
+// sourceId, recalcula targetId con transform(valor) mientras el usuario no
+// haya tocado targetId a mano.
+// ============================================================================
+function promptDates(title, fields, options = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("date-modal");
+    const content = document.getElementById("date-modal-content");
+    content.innerHTML = `
+      <h3 style="margin:0 0 14px;">${escapeHtml(title)}</h3>
+      ${fields.map((f) => `
+        <div class="field">
+          <label>${escapeHtml(f.label)}</label>
+          <input type="date" id="dm-${f.id}" value="${f.value}" />
+        </div>`).join("")}
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <button class="btn secondary block" id="dm-cancel">Cancelar</button>
+        <button class="btn block" id="dm-ok">Confirmar</button>
+      </div>
+    `;
+    modal.hidden = false;
+
+    if (options.autoLink) {
+      const { sourceId, targetId, transform } = options.autoLink;
+      const sourceEl = document.getElementById(`dm-${sourceId}`);
+      const targetEl = document.getElementById(`dm-${targetId}`);
+      let targetTouched = false;
+      targetEl.addEventListener("input", () => { targetTouched = true; });
+      sourceEl.addEventListener("input", () => {
+        if (!targetTouched) targetEl.value = transform(sourceEl.value);
+      });
+    }
+
+    document.getElementById("dm-cancel").addEventListener("click", () => {
+      modal.hidden = true;
+      resolve(null);
+    });
+    document.getElementById("dm-ok").addEventListener("click", () => {
+      const result = {};
+      fields.forEach((f) => { result[f.id] = document.getElementById(`dm-${f.id}`).value; });
+      modal.hidden = true;
+      resolve(result);
+    });
+  });
 }
 
 // ============================================================================
@@ -756,19 +827,56 @@ function dateLabelFor(estado, s) {
 
 async function avanzarEtapa(id, estadoActual) {
   const ref = doc(db, "students", id);
-  const now = nowIso();
+  const today = todayDateInput();
+
   if (estadoActual === "NUEVO") {
-    await updateDoc(ref, { estado: "PRIMER_SEGUIMIENTO", fechaInicioSeguimiento: now, updatedAt: now });
+    const res = await promptDates("Empezar seguimiento", [
+      { id: "inicio", label: "Fecha de inicio del primer seguimiento", value: today },
+    ]);
+    if (!res) return;
+    await updateDoc(ref, {
+      estado: "PRIMER_SEGUIMIENTO",
+      fechaInicioSeguimiento: dateInputToIso(res.inicio),
+      updatedAt: nowIso(),
+    });
+
   } else if (estadoActual === "PRIMER_SEGUIMIENTO") {
+    const res = await promptDates("Primer seguimiento completado", [
+      { id: "hecho", label: "Fecha en que se completó el primer seguimiento", value: today },
+      { id: "programado", label: "Fecha programada para el segundo seguimiento", value: isoToDateInput(addMonthsIso(dateInputToIso(today), 3)) },
+    ], {
+      autoLink: { sourceId: "hecho", targetId: "programado", transform: (v) => isoToDateInput(addMonthsIso(dateInputToIso(v), 3)) },
+    });
+    if (!res) return;
     await updateDoc(ref, {
       estado: "SEGUNDO_SEGUIMIENTO",
-      fechaPrimerSeguimientoHecho: now,
-      fechaSegundoSeguimientoProgramada: addMonthsIso(now, 3),
-      updatedAt: now,
+      fechaPrimerSeguimientoHecho: dateInputToIso(res.hecho),
+      fechaSegundoSeguimientoProgramada: dateInputToIso(res.programado),
+      updatedAt: nowIso(),
     });
+
   } else if (estadoActual === "SEGUNDO_SEGUIMIENTO") {
-    await updateDoc(ref, { estado: "COMPLETADO", fechaCompletado: now, updatedAt: now });
+    const res = await promptDates("Seguimiento completado", [
+      { id: "completado", label: "Fecha en que se completó el seguimiento", value: today },
+    ]);
+    if (!res) return;
+    await updateDoc(ref, {
+      estado: "COMPLETADO",
+      fechaCompletado: dateInputToIso(res.completado),
+      updatedAt: nowIso(),
+    });
   }
+}
+
+async function reprogramarSegundoSeguimiento(id, fechaActualIso) {
+  const res = await promptDates("Cambiar fecha del segundo seguimiento", [
+    { id: "programado", label: "Nueva fecha programada", value: isoToDateInput(fechaActualIso) },
+  ]);
+  if (!res) return;
+  await updateDoc(doc(db, "students", id), {
+    fechaSegundoSeguimientoProgramada: dateInputToIso(res.programado),
+    updatedAt: nowIso(),
+  });
 }
 
 // ============================================================================
@@ -811,10 +919,15 @@ function openStudentModal(id) {
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;" />
     <h4 style="margin:0 0 10px;">Cuestionario de onboarding</h4>
     ${sectionsHtml}
-    ${meta.boton ? `<button class="btn" style="margin-top:16px;" id="modal-avanzar-btn">${meta.boton}</button>` : ""}
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      ${meta.boton ? `<button class="btn" id="modal-avanzar-btn">${meta.boton}</button>` : ""}
+      ${s.estado === "SEGUNDO_SEGUIMIENTO" ? `<button class="btn secondary" id="modal-reprogramar-btn">Cambiar fecha programada</button>` : ""}
+    </div>
   `;
   const advBtn = document.getElementById("modal-avanzar-btn");
-  if (advBtn) advBtn.addEventListener("click", async () => { await avanzarEtapa(s.id, s.estado); studentModal.hidden = true; });
+  if (advBtn) advBtn.addEventListener("click", async () => { studentModal.hidden = true; await avanzarEtapa(s.id, s.estado); });
+  const reprogramarBtn = document.getElementById("modal-reprogramar-btn");
+  if (reprogramarBtn) reprogramarBtn.addEventListener("click", async () => { studentModal.hidden = true; await reprogramarSegundoSeguimiento(s.id, s.fechaSegundoSeguimientoProgramada); });
 
   studentModal.hidden = false;
 }
@@ -887,6 +1000,7 @@ function renderCalendar() {
 // ============================================================================
 const naFileInput = document.getElementById("na-file");
 const uploadBox = document.getElementById("upload-box");
+document.getElementById("na-fecha-alta").value = todayDateInput();
 document.getElementById("na-file-btn").addEventListener("click", () => naFileInput.click());
 naFileInput.addEventListener("change", () => { if (naFileInput.files[0]) parseOnboardingFile(naFileInput.files[0]); });
 
@@ -994,6 +1108,7 @@ document.getElementById("na-guardar").addEventListener("click", async () => {
   });
 
   const now = nowIso();
+  const fechaAltaInput = document.getElementById("na-fecha-alta").value;
   try {
     await addDoc(collection(db, "students"), {
       nombreCompleto,
@@ -1001,7 +1116,7 @@ document.getElementById("na-guardar").addEventListener("click", async () => {
       telefono: document.getElementById("na-telefono").value.trim() || null,
       tiempoTotalTrading: document.getElementById("na-tiempo-trading").value.trim() || null,
       estado: "NUEVO",
-      fechaAlta: now,
+      fechaAlta: fechaAltaInput ? dateInputToIso(fechaAltaInput) : now,
       fechaInicioSeguimiento: null,
       fechaPrimerSeguimientoHecho: null,
       fechaSegundoSeguimientoProgramada: null,
@@ -1017,6 +1132,7 @@ document.getElementById("na-guardar").addEventListener("click", async () => {
     okBox.hidden = false;
     ["na-nombre", "na-email", "na-telefono", "na-tiempo-trading", "na-file-name"].forEach((id) => (document.getElementById(id).value = ""));
     document.getElementById("na-file-name").textContent = "";
+    document.getElementById("na-fecha-alta").value = todayDateInput();
     document.getElementById("onboarding-preview").hidden = true;
     document.getElementById("onboarding-preview").innerHTML = "";
     naFileInput.value = "";
