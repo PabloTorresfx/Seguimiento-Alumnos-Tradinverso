@@ -13,7 +13,8 @@
     --verde:#16a34a; --verde-bg:#dcfce7;
     --bg:#f4f5f7; --card:#ffffff; --border:#e2e8f0;
     --text:#0f172a; --muted:#64748b; --muted2:#94a3b8;
-    --sidebar-bg:#0f172a; --sidebar-text:#cbd5e1; --sidebar-active:#1e293b;
+    --accent:#3730a3; --accent-bg:#eef2ff;
+    --sidebar-bg:#ffffff; --sidebar-text:#334155; --sidebar-active:var(--accent);
     --danger:#dc2626;
     --radius:10px;
   }
@@ -47,15 +48,22 @@
 
   /* ---------- App shell ---------- */
   #app-shell{display:flex;min-height:100vh;}
-  .sidebar{width:230px;flex-shrink:0;background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;}
-  .sidebar .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 18px;border-bottom:1px solid #1e293b;margin-bottom:14px;}
-  .sidebar .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--azul);}
-  .sidebar .brand strong{color:#fff;font-size:15px;letter-spacing:.4px;}
-  .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--sidebar-text);font-size:14px;font-weight:500;text-decoration:none;margin-bottom:2px;background:none;border:none;width:100%;text-align:left;}
-  .nav-link:hover{background:#1e293b;}
+  .sidebar{width:250px;flex-shrink:0;background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:column;padding:18px 14px;position:sticky;top:0;height:100vh;border-right:1px solid var(--border);}
+  .sidebar .brand{display:flex;align-items:center;gap:10px;padding:4px 6px 18px;margin-bottom:10px;}
+  .sidebar .brand .logo-square{width:34px;height:34px;flex-shrink:0;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;}
+  .sidebar .brand .brand-text strong{display:block;color:var(--text);font-size:14.5px;letter-spacing:.2px;line-height:1.25;}
+  .sidebar .brand .brand-text span{display:block;color:var(--muted);font-size:11.5px;line-height:1.2;}
+  .nav-link{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:var(--sidebar-text);font-size:14px;font-weight:500;text-decoration:none;margin-bottom:2px;background:none;border:none;width:100%;text-align:left;}
+  .nav-link:hover{background:#f1f5f9;}
   .nav-link.active{background:var(--sidebar-active);color:#fff;}
-  .sidebar-footer{margin-top:auto;padding-top:14px;border-top:1px solid #1e293b;}
-  .sidebar-footer .who{font-size:12.5px;color:var(--sidebar-text);margin-bottom:8px;line-height:1.4;overflow-wrap:anywhere;}
+  .sidebar-footer{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);}
+  .sidebar-footer .who{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:0 4px;}
+  .sidebar-footer .avatar{width:32px;height:32px;flex-shrink:0;border-radius:50%;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+  .sidebar-footer .who-text{overflow:hidden;}
+  .sidebar-footer .who-text strong{display:block;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sidebar-footer .who-text span{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .logout-link{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;color:var(--muted);font-size:13.5px;background:none;border:none;width:100%;text-align:left;}
+  .logout-link:hover{background:#f1f5f9;color:var(--text);}
   main{flex:1;padding:28px 34px;max-width:1200px;}
   .view h2{margin:0 0 4px;font-size:22px;}
   .view p.desc{color:var(--muted);margin:0 0 22px;font-size:14px;}
@@ -63,23 +71,32 @@
   /* ---------- Dashboard ---------- */
   .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
   .kpi-row.secondary{grid-template-columns:repeat(2,1fr);max-width:600px;}
-  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
-  .kpi-card .val{font-size:26px;font-weight:700;}
-  .kpi-card .lbl{font-size:12.5px;color:var(--muted);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
-  .kpi-card.azul{border-top:3px solid var(--azul);}
-  .kpi-card.morado{border-top:3px solid var(--morado);}
-  .kpi-card.amarillo{border-top:3px solid var(--amarillo);}
-  .kpi-card.verde{border-top:3px solid var(--verde);}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .kpi-card .lbl{font-size:13px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+  .kpi-card .lbl .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .kpi-card .val{font-size:28px;font-weight:700;}
+  .kpi-card .ring{width:38px;height:38px;border-radius:50%;border:3px solid var(--ring-color, var(--border));flex-shrink:0;background:var(--ring-bg, transparent);}
+  .kpi-card.azul .ring{--ring-color:var(--azul);--ring-bg:var(--azul-bg);}
+  .kpi-card.morado .ring{--ring-color:var(--morado);--ring-bg:var(--morado-bg);}
+  .kpi-card.amarillo .ring{--ring-color:var(--amarillo);--ring-bg:var(--amarillo-bg);}
+  .kpi-card.verde .ring{--ring-color:var(--verde);--ring-bg:var(--verde-bg);}
+  .kpi-card .lbl .dot.azul{background:var(--azul);}
+  .kpi-card .lbl .dot.morado{background:var(--morado);}
+  .kpi-card .lbl .dot.amarillo{background:var(--amarillo);}
+  .kpi-card .lbl .dot.verde{background:var(--verde);}
 
-  .charts-row{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin:22px 0;}
+  .charts-row{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin:22px 0;align-items:stretch;}
   .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;}
   .panel h3{margin:0 0 4px;font-size:15px;}
-  .panel p.hint{margin:0 0 14px;font-size:12.5px;color:var(--muted);}
-  .bar-chart{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:20px;}
-  .bar-chart .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
-  .bar-chart .bar{width:100%;max-width:34px;border-radius:4px 4px 0 0;position:relative;min-height:2px;}
-  .bar-chart .bar .val-lbl{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:11.5px;font-weight:700;color:var(--text);}
-  .bar-chart .cat-lbl{margin-top:8px;font-size:11.5px;color:var(--muted);text-align:center;}
+  .panel p.hint{margin:0;font-size:12.5px;color:var(--muted);}
+  .line-chart-wrap{width:100%;}
+  .line-chart-wrap svg{width:100%;height:auto;display:block;overflow:visible;}
+  .donut-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;}
+  .donut-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 16px;font-size:12.5px;color:var(--text);}
+  .donut-legend .item{display:flex;align-items:center;gap:6px;}
+  .donut-legend .item .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .donut-empty{color:var(--muted2);font-size:13px;text-align:center;padding:30px 0;}
 
   .proximos-panel{margin-top:0;}
   .proximo-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13.5px;}
@@ -185,53 +202,59 @@
 <!-- ======================= APP ======================= -->
 <div id="app-shell" hidden>
   <aside class="sidebar">
-    <div class="brand"><span class="dot"></span><strong>TRADINVERSO</strong></div>
+    <div class="brand">
+      <span class="logo-square">T</span>
+      <span class="brand-text"><strong>TRADINVERSO</strong><span>Seguimiento Alumnado</span></span>
+    </div>
     <nav>
-      <button class="nav-link" data-view="dashboard">📊 Dashboard</button>
+      <button class="nav-link" data-view="dashboard">▦ Dashboard</button>
       <button class="nav-link" data-view="alumnos">👥 Alumnos</button>
       <button class="nav-link" data-view="calendario">📅 Calendario</button>
       <button class="nav-link" data-view="nuevo-alumno">➕ Nuevo alumno</button>
-      <button class="nav-link" data-view="equipo">🧑‍🤝‍🧑 Equipo</button>
+      <button class="nav-link" data-view="equipo">⚙️ Equipo</button>
     </nav>
     <div class="sidebar-footer">
-      <div class="who" id="who-am-i">—</div>
-      <button id="logout-btn" class="btn secondary block small">Cerrar sesión</button>
+      <div class="who">
+        <span class="avatar" id="who-avatar">—</span>
+        <span class="who-text"><strong id="who-name">—</strong><span id="who-email">—</span></span>
+      </div>
+      <button id="logout-btn" class="logout-link">⏻ Cerrar sesión</button>
     </div>
   </aside>
 
   <main>
     <!-- ---------- DASHBOARD ---------- -->
     <section class="view" id="view-dashboard">
-      <h2>Dashboard</h2>
-      <p class="desc">Resumen general del seguimiento de alumnos de TRADINVERSO.</p>
+      <h2>🏠 Dashboard</h2>
+      <p class="desc">Visión general del seguimiento del alumnado.</p>
 
       <div class="kpi-row">
-        <div class="kpi-card azul"><div class="val" id="kpi-nuevo">0</div><div class="lbl">Alumno nuevo</div></div>
-        <div class="kpi-card morado"><div class="val" id="kpi-primero">0</div><div class="lbl">Primer seguimiento</div></div>
-        <div class="kpi-card amarillo"><div class="val" id="kpi-segundo">0</div><div class="lbl">Segundo seguimiento</div></div>
-        <div class="kpi-card verde"><div class="val" id="kpi-completado">0</div><div class="lbl">Completado</div></div>
+        <div class="kpi-card azul"><div><div class="lbl"><span class="dot azul"></span>Alumno nuevo</div><div class="val" id="kpi-nuevo">0</div></div><div class="ring"></div></div>
+        <div class="kpi-card morado"><div><div class="lbl"><span class="dot morado"></span>Primer seguimiento</div><div class="val" id="kpi-primero">0</div></div><div class="ring"></div></div>
+        <div class="kpi-card amarillo"><div><div class="lbl"><span class="dot amarillo"></span>Segundo seguimiento</div><div class="val" id="kpi-segundo">0</div></div><div class="ring"></div></div>
+        <div class="kpi-card verde"><div><div class="lbl"><span class="dot verde"></span>Seguimiento completado</div><div class="val" id="kpi-completado">0</div></div><div class="ring"></div></div>
       </div>
       <div class="kpi-row secondary">
-        <div class="kpi-card"><div class="val" id="kpi-total">0</div><div class="lbl">Total alumnos</div></div>
-        <div class="kpi-card"><div class="val" id="kpi-activos">0</div><div class="lbl">En seguimiento activo</div></div>
+        <div class="kpi-card"><div><div class="lbl">Total alumnos</div><div class="val" id="kpi-total">0</div></div></div>
+        <div class="kpi-card"><div><div class="lbl">Alumnos activos (en seguimiento)</div><div class="val" id="kpi-activos">0</div></div></div>
       </div>
 
       <div class="charts-row">
         <div class="panel">
-          <h3>Alumnos nuevos por mes</h3>
-          <p class="hint">Últimos 6 meses, según fecha de alta.</p>
-          <div class="bar-chart" id="chart-por-mes"></div>
+          <div class="panel-head"><h3>Alumnos nuevos por mes</h3></div>
+          <div class="line-chart-wrap" id="chart-por-mes"></div>
         </div>
         <div class="panel">
-          <h3>Distribución por etapa</h3>
-          <p class="hint">Nº de alumnos en cada etapa del seguimiento.</p>
-          <div class="bar-chart" id="chart-por-etapa"></div>
+          <div class="panel-head"><h3>Distribución por etapa</h3></div>
+          <div class="donut-wrap" id="chart-por-etapa"></div>
         </div>
       </div>
 
       <div class="panel proximos-panel">
-        <h3>Próximos seguimientos</h3>
-        <p class="hint">Los 10 segundos seguimientos más próximos. <button class="link-btn" data-view="calendario">Ver calendario completo →</button></p>
+        <div class="panel-head">
+          <h3>Próximos seguimientos</h3>
+          <button class="link-btn" data-view="calendario">Ver calendario →</button>
+        </div>
         <div id="proximos-list"></div>
       </div>
     </section>
@@ -364,12 +387,12 @@
 // la dan las reglas de Firestore y de Authentication, no ocultar esta config.
 // ============================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCAZxrWIVX2uXwydVmRh9DdDb-kj9OSggs",
-  authDomain: "seguimiento-alumnos-1113e.firebaseapp.com",
-  projectId: "seguimiento-alumnos-1113e",
-  storageBucket: "seguimiento-alumnos-1113e.firebasestorage.app",
-  messagingSenderId: "303156566388",
-  appId: "1:303156566388:web:2146b953e6ec08c5feb421"
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROYECTO.firebaseapp.com",
+  projectId: "TU_PROYECTO",
+  storageBucket: "TU_PROYECTO.appspot.com",
+  messagingSenderId: "TU_SENDER_ID",
+  appId: "TU_APP_ID",
 };
 
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
@@ -532,7 +555,9 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   currentUserDoc = { uid: user.uid, ...memberSnap.data() };
-  document.getElementById("who-am-i").textContent = `${currentUserDoc.name} · ${currentUserDoc.email}`;
+  document.getElementById("who-avatar").textContent = (currentUserDoc.name || "?").trim().charAt(0).toUpperCase();
+  document.getElementById("who-name").textContent = currentUserDoc.name || "—";
+  document.getElementById("who-email").textContent = currentUserDoc.email || "—";
   loginScreen.hidden = true;
   appShell.hidden = false;
 
@@ -567,6 +592,71 @@ document.querySelectorAll("[data-view]").forEach((btn) => {
 });
 
 // ============================================================================
+// GRÁFICAS (SVG, sin librerías externas)
+// ============================================================================
+function buildLineChartSvg(meses) {
+  const W = 560, H = 210, padL = 26, padR = 10, padT = 10, padB = 24;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const max = Math.max(...meses.map((m) => m.count));
+  const yMax = Math.max(4, max);
+  const gridLabels = [0, 1, 2, 3, 4].map((i) => Math.round((yMax / 4) * i));
+  const x = (i) => padL + (meses.length === 1 ? plotW / 2 : (i / (meses.length - 1)) * plotW);
+  const y = (v) => padT + plotH - (v / yMax) * plotH;
+
+  const gridLines = gridLabels.map((v) => {
+    const yy = y(v);
+    return `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="var(--border)" stroke-width="1" />
+      <text x="${padL - 8}" y="${yy + 4}" font-size="10.5" text-anchor="end" fill="var(--muted)">${v}</text>`;
+  }).join("");
+
+  const points = meses.map((m, i) => `${x(i)},${y(m.count)}`).join(" ");
+  const markers = meses.map((m, i) => `<circle cx="${x(i)}" cy="${y(m.count)}" r="4" fill="var(--azul)" stroke="#fff" stroke-width="2" />`).join("");
+  const xLabels = meses.map((m, i) => `<text x="${x(i)}" y="${H - 4}" font-size="11" text-anchor="middle" fill="var(--muted)">${escapeHtml(m.label)}</text>`).join("");
+
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Alumnos nuevos por mes">
+    ${gridLines}
+    <polyline points="${points}" fill="none" stroke="var(--azul)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+    ${markers}
+    ${xLabels}
+  </svg>`;
+}
+
+function buildDonutChart(counts) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const cx = 80, cy = 80, r = 60, strokeW = 24;
+  const circumference = 2 * Math.PI * r;
+
+  let segments;
+  if (total === 0) {
+    segments = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${strokeW}" />`;
+  } else {
+    let acc = 0;
+    segments = ESTADOS.map((estado) => {
+      const meta = ESTADO_META[estado];
+      const frac = counts[estado] / total;
+      const dash = `${Math.max(frac * circumference - 2, 0)} ${circumference}`;
+      const offset = -acc * circumference;
+      acc += frac;
+      if (frac === 0) return "";
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--${meta.color})" stroke-width="${strokeW}"
+        stroke-dasharray="${dash}" stroke-dashoffset="${offset}" stroke-linecap="round" />`;
+    }).join("");
+  }
+
+  const svg = `<svg viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Distribución por etapa">
+    <g transform="rotate(-90 ${cx} ${cy})">${segments}</g>
+    <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="20" font-weight="700" fill="var(--text)">${total}</text>
+  </svg>`;
+
+  const legend = `<div class="donut-legend">${ESTADOS.map((estado) => {
+    const meta = ESTADO_META[estado];
+    return `<span class="item"><span class="dot" style="background:var(--${meta.color})"></span>${meta.label}</span>`;
+  }).join("")}</div>`;
+
+  return svg + legend;
+}
+
+// ============================================================================
 // DASHBOARD
 // ============================================================================
 function renderDashboard() {
@@ -594,27 +684,10 @@ function renderDashboard() {
     const m = meses.find((m) => m.key === key);
     if (m) m.count++;
   });
-  const maxMes = Math.max(1, ...meses.map((m) => m.count));
-  document.getElementById("chart-por-mes").innerHTML = meses.map((m) => `
-    <div class="bar-col">
-      <div class="bar" style="height:${(m.count / maxMes) * 100}%;background:var(--azul);">
-        <span class="val-lbl">${m.count}</span>
-      </div>
-      <div class="cat-lbl">${escapeHtml(m.label)}</div>
-    </div>`).join("");
+  document.getElementById("chart-por-mes").innerHTML = buildLineChartSvg(meses);
 
   // --- Gráfica: distribución por etapa ---
-  const maxEtapa = Math.max(1, ...Object.values(counts));
-  document.getElementById("chart-por-etapa").innerHTML = ESTADOS.map((estado) => {
-    const meta = ESTADO_META[estado];
-    return `
-    <div class="bar-col">
-      <div class="bar" style="height:${(counts[estado] / maxEtapa) * 100}%;background:var(--${meta.color});">
-        <span class="val-lbl">${counts[estado]}</span>
-      </div>
-      <div class="cat-lbl">${meta.label}</div>
-    </div>`;
-  }).join("");
+  document.getElementById("chart-por-etapa").innerHTML = buildDonutChart(counts);
 
   // --- Próximos seguimientos ---
   const proximos = allStudents
