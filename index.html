@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TRADINVERSO — Seguimiento de alumnos</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  :root{
+    --azul:#0369a1; --azul-bg:#e0f2fe;
+    --morado:#9333ea; --morado-bg:#f3e8ff;
+    --amarillo:#d97706; --amarillo-bg:#fef3c7;
+    --verde:#16a34a; --verde-bg:#dcfce7;
+    --bg:#f4f5f7; --card:#ffffff; --border:#e2e8f0;
+    --text:#0f172a; --muted:#64748b; --muted2:#94a3b8;
+    --sidebar-bg:#0f172a; --sidebar-text:#cbd5e1; --sidebar-active:#1e293b;
+    --danger:#dc2626;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  button{font-family:inherit;cursor:pointer;}
+  input,textarea,select{font-family:inherit;}
+  a{color:var(--azul);}
+  [hidden]{display:none !important;}
+
+  /* ---------- Login ---------- */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0f172a,#0369a1);}
+  .login-box{background:var(--card);padding:36px 32px;border-radius:16px;width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+  .login-box h1{margin:0 0 4px;font-size:22px;letter-spacing:.5px;}
+  .login-box p.sub{margin:0 0 24px;color:var(--muted);font-size:14px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:#334155;}
+  .field input, .field textarea, .field select{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;}
+  .field textarea{resize:vertical;min-height:60px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:600;background:var(--azul);color:#fff;transition:opacity .15s;}
+  .btn:hover{opacity:.9;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn.block{width:100%;}
+  .btn.secondary{background:#e2e8f0;color:#334155;}
+  .btn.ghost{background:transparent;color:var(--azul);padding:4px 8px;}
+  .btn.danger{background:var(--danger);}
+  .btn.small{padding:6px 10px;font-size:12.5px;}
+  .error-msg{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;}
+  .success-msg{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;}
+  .link-btn{background:none;border:none;color:var(--azul);font-size:13px;padding:0;text-decoration:underline;}
+
+  /* ---------- App shell ---------- */
+  #app-shell{display:flex;min-height:100vh;}
+  .sidebar{width:230px;flex-shrink:0;background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;}
+  .sidebar .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 18px;border-bottom:1px solid #1e293b;margin-bottom:14px;}
+  .sidebar .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--azul);}
+  .sidebar .brand strong{color:#fff;font-size:15px;letter-spacing:.4px;}
+  .nav-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--sidebar-text);font-size:14px;font-weight:500;text-decoration:none;margin-bottom:2px;background:none;border:none;width:100%;text-align:left;}
+  .nav-link:hover{background:#1e293b;}
+  .nav-link.active{background:var(--sidebar-active);color:#fff;}
+  .sidebar-footer{margin-top:auto;padding-top:14px;border-top:1px solid #1e293b;}
+  .sidebar-footer .who{font-size:12.5px;color:var(--sidebar-text);margin-bottom:8px;line-height:1.4;overflow-wrap:anywhere;}
+  main{flex:1;padding:28px 34px;max-width:1200px;}
+  .view h2{margin:0 0 4px;font-size:22px;}
+  .view p.desc{color:var(--muted);margin:0 0 22px;font-size:14px;}
+
+  /* ---------- Dashboard ---------- */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
+  .kpi-row.secondary{grid-template-columns:repeat(2,1fr);max-width:600px;}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+  .kpi-card .val{font-size:26px;font-weight:700;}
+  .kpi-card .lbl{font-size:12.5px;color:var(--muted);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+  .kpi-card.azul{border-top:3px solid var(--azul);}
+  .kpi-card.morado{border-top:3px solid var(--morado);}
+  .kpi-card.amarillo{border-top:3px solid var(--amarillo);}
+  .kpi-card.verde{border-top:3px solid var(--verde);}
+
+  .charts-row{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin:22px 0;}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+  .panel h3{margin:0 0 4px;font-size:15px;}
+  .panel p.hint{margin:0 0 14px;font-size:12.5px;color:var(--muted);}
+  .bar-chart{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:20px;}
+  .bar-chart .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .bar-chart .bar{width:100%;max-width:34px;border-radius:4px 4px 0 0;position:relative;min-height:2px;}
+  .bar-chart .bar .val-lbl{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:11.5px;font-weight:700;color:var(--text);}
+  .bar-chart .cat-lbl{margin-top:8px;font-size:11.5px;color:var(--muted);text-align:center;}
+
+  .proximos-panel{margin-top:0;}
+  .proximo-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13.5px;}
+  .proximo-item:last-child{border-bottom:none;}
+  .proximo-item .nombre{font-weight:600;}
+  .proximo-item .cuando{color:var(--muted);font-size:12.5px;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+  .badge.azul{background:var(--azul-bg);color:var(--azul);}
+  .badge.morado{background:var(--morado-bg);color:var(--morado);}
+  .badge.amarillo{background:var(--amarillo-bg);color:var(--amarillo);}
+  .badge.verde{background:var(--verde-bg);color:var(--verde);}
+
+  /* ---------- Alumnos (kanban) ---------- */
+  .search-row{margin-bottom:18px;max-width:360px;}
+  .kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start;}
+  .kanban-col{background:#eef0f3;border-radius:var(--radius);padding:12px;min-height:120px;}
+  .kanban-col .col-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-weight:700;font-size:13.5px;padding:0 4px;}
+  .kanban-col .col-head .count{margin-left:auto;background:#fff;border-radius:20px;padding:1px 9px;font-size:12px;color:var(--muted);}
+  .kanban-col.azul{border-top:3px solid var(--azul);}
+  .kanban-col.morado{border-top:3px solid var(--morado);}
+  .kanban-col.amarillo{border-top:3px solid var(--amarillo);}
+  .kanban-col.verde{border-top:3px solid var(--verde);}
+  .student-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;}
+  .student-card:hover{border-color:#94a3b8;}
+  .student-card .nombre{font-weight:700;font-size:14px;margin-bottom:2px;}
+  .student-card .meta{font-size:12px;color:var(--muted);margin-bottom:8px;}
+  .student-card .btn{width:100%;}
+  .empty-col{color:var(--muted2);font-size:12.5px;text-align:center;padding:16px 4px;}
+
+  /* ---------- Calendario ---------- */
+  .cal-nav{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+  .cal-nav .mes-lbl{font-weight:700;font-size:16px;min-width:170px;text-align:center;text-transform:capitalize;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-dow{font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;padding-bottom:4px;text-transform:uppercase;}
+  .cal-day{background:var(--card);border:1px solid var(--border);border-radius:8px;min-height:86px;padding:6px;font-size:12px;}
+  .cal-day.outside{background:#f1f2f4;color:var(--muted2);}
+  .cal-day .num{font-weight:700;margin-bottom:4px;}
+  .cal-day.today .num{color:var(--azul);}
+  .cal-chip{background:var(--amarillo-bg);color:var(--amarillo);border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;margin-bottom:3px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ---------- Nuevo alumno ---------- */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:640px;}
+  .upload-box{border:2px dashed var(--border);border-radius:var(--radius);padding:22px;text-align:center;margin:18px 0;max-width:640px;}
+  .upload-box.dragover{border-color:var(--azul);background:var(--azul-bg);}
+  .onboarding-preview{margin-top:20px;max-width:720px;}
+  .onboarding-section{margin-bottom:16px;}
+  .onboarding-section h4{margin:0 0 8px;font-size:13.5px;color:var(--azul);}
+  .onboarding-field{margin-bottom:8px;}
+  .onboarding-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px;}
+
+  /* ---------- Equipo ---------- */
+  .team-list{max-width:520px;margin-bottom:22px;}
+  .team-item{display:flex;align-items:center;justify-content:between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;}
+  .team-item .info strong{display:block;font-size:14px;}
+  .team-item .info span{font-size:12.5px;color:var(--muted);}
+  .team-form{max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal-box{background:#fff;border-radius:14px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;padding:26px 28px;}
+  .modal-box h3{margin:0 0 2px;font-size:19px;}
+  .modal-close{position:sticky;top:0;float:right;background:#f1f5f9;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;}
+
+  @media (max-width: 900px){
+    #app-shell{flex-direction:column;}
+    .sidebar{position:relative;width:100%;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;}
+    .sidebar .brand{border:none;margin:0 12px 0 0;padding:0;}
+    .sidebar-footer{margin:0 0 0 auto;padding:0;border:none;}
+    main{padding:18px;}
+    .kpi-row, .kpi-row.secondary, .form-grid, .kanban, .charts-row{grid-template-columns:1fr 1fr;}
+  }
+  @media (max-width: 560px){
+    .kpi-row, .kpi-row.secondary, .form-grid, .kanban, .charts-row{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN ======================= -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>TRADINVERSO</h1>
+    <p class="sub">Seguimiento de alumnos — acceso privado del equipo</p>
+    <div id="login-error" class="error-msg" hidden></div>
+    <div id="login-ok" class="success-msg" hidden></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" required autocomplete="email" placeholder="tucorreo@tradinverso.com" />
+      </div>
+      <div class="field">
+        <label for="login-password">Contraseña</label>
+        <input id="login-password" type="password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn block">Entrar</button>
+    </form>
+    <div style="text-align:center;margin-top:14px;">
+      <button type="button" id="forgot-btn" class="link-btn">¿Olvidaste tu contraseña?</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= APP ======================= -->
+<div id="app-shell" hidden>
+  <aside class="sidebar">
+    <div class="brand"><span class="dot"></span><strong>TRADINVERSO</strong></div>
+    <nav>
+      <button class="nav-link" data-view="dashboard">📊 Dashboard</button>
+      <button class="nav-link" data-view="alumnos">👥 Alumnos</button>
+      <button class="nav-link" data-view="calendario">📅 Calendario</button>
+      <button class="nav-link" data-view="nuevo-alumno">➕ Nuevo alumno</button>
+      <button class="nav-link" data-view="equipo">🧑‍🤝‍🧑 Equipo</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="who" id="who-am-i">—</div>
+      <button id="logout-btn" class="btn secondary block small">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- ---------- DASHBOARD ---------- -->
+    <section class="view" id="view-dashboard">
+      <h2>Dashboard</h2>
+      <p class="desc">Resumen general del seguimiento de alumnos de TRADINVERSO.</p>
+
+      <div class="kpi-row">
+        <div class="kpi-card azul"><div class="val" id="kpi-nuevo">0</div><div class="lbl">Alumno nuevo</div></div>
+        <div class="kpi-card morado"><div class="val" id="kpi-primero">0</div><div class="lbl">Primer seguimiento</div></div>
+        <div class="kpi-card amarillo"><div class="val" id="kpi-segundo">0</div><div class="lbl">Segundo seguimiento</div></div>
+        <div class="kpi-card verde"><div class="val" id="kpi-completado">0</div><div class="lbl">Completado</div></div>
+      </div>
+      <div class="kpi-row secondary">
+        <div class="kpi-card"><div class="val" id="kpi-total">0</div><div class="lbl">Total alumnos</div></div>
+        <div class="kpi-card"><div class="val" id="kpi-activos">0</div><div class="lbl">En seguimiento activo</div></div>
+      </div>
+
+      <div class="charts-row">
+        <div class="panel">
+          <h3>Alumnos nuevos por mes</h3>
+          <p class="hint">Últimos 6 meses, según fecha de alta.</p>
+          <div class="bar-chart" id="chart-por-mes"></div>
+        </div>
+        <div class="panel">
+          <h3>Distribución por etapa</h3>
+          <p class="hint">Nº de alumnos en cada etapa del seguimiento.</p>
+          <div class="bar-chart" id="chart-por-etapa"></div>
+        </div>
+      </div>
+
+      <div class="panel proximos-panel">
+        <h3>Próximos seguimientos</h3>
+        <p class="hint">Los 10 segundos seguimientos más próximos. <button class="link-btn" data-view="calendario">Ver calendario completo →</button></p>
+        <div id="proximos-list"></div>
+      </div>
+    </section>
+
+    <!-- ---------- ALUMNOS ---------- -->
+    <section class="view" id="view-alumnos" hidden>
+      <h2>Alumnos</h2>
+      <p class="desc">Tablero de seguimiento. Haz clic en un alumno para ver su ficha completa.</p>
+      <div class="search-row">
+        <input id="search-alumnos" type="search" placeholder="Buscar alumno por nombre…" />
+      </div>
+      <div class="kanban">
+        <div class="kanban-col azul">
+          <div class="col-head">🔵 Alumno nuevo <span class="count" id="count-NUEVO">0</span></div>
+          <div id="col-NUEVO"></div>
+        </div>
+        <div class="kanban-col morado">
+          <div class="col-head">🟣 Primer seguimiento <span class="count" id="count-PRIMER_SEGUIMIENTO">0</span></div>
+          <div id="col-PRIMER_SEGUIMIENTO"></div>
+        </div>
+        <div class="kanban-col amarillo">
+          <div class="col-head">🟡 Segundo seguimiento <span class="count" id="count-SEGUNDO_SEGUIMIENTO">0</span></div>
+          <div id="col-SEGUNDO_SEGUIMIENTO"></div>
+        </div>
+        <div class="kanban-col verde">
+          <div class="col-head">🟢 Completado <span class="count" id="count-COMPLETADO">0</span></div>
+          <div id="col-COMPLETADO"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- CALENDARIO ---------- -->
+    <section class="view" id="view-calendario" hidden>
+      <h2>Calendario</h2>
+      <p class="desc">Los segundos seguimientos aparecen automáticamente 3 meses después de completar el primero.</p>
+      <div class="cal-nav">
+        <button class="btn secondary small" id="cal-prev">← Mes anterior</button>
+        <div class="mes-lbl" id="cal-mes-lbl"></div>
+        <button class="btn secondary small" id="cal-next">Mes siguiente →</button>
+        <button class="btn ghost small" id="cal-hoy">Ir a hoy</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </section>
+
+    <!-- ---------- NUEVO ALUMNO ---------- -->
+    <section class="view" id="view-nuevo-alumno" hidden>
+      <h2>Nuevo alumno</h2>
+      <p class="desc">Rellena los datos básicos y sube el documento de onboarding (.docx) para extraer el resto automáticamente.</p>
+
+      <div id="na-error" class="error-msg" hidden></div>
+      <div id="na-ok" class="success-msg" hidden></div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Nombre completo</label>
+          <input id="na-nombre" type="text" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input id="na-email" type="email" />
+        </div>
+        <div class="field">
+          <label>Teléfono</label>
+          <input id="na-telefono" type="text" />
+        </div>
+        <div class="field">
+          <label>Tiempo total en trading</label>
+          <input id="na-tiempo-trading" type="text" />
+        </div>
+      </div>
+
+      <div class="upload-box" id="upload-box">
+        <p style="margin:0 0 10px;font-size:14px;">Arrastra aquí el <strong>.docx</strong> de onboarding o</p>
+        <input type="file" id="na-file" accept=".docx" style="display:none;" />
+        <button type="button" class="btn secondary" id="na-file-btn">Elegir archivo</button>
+        <p id="na-file-name" style="margin:10px 0 0;font-size:12.5px;color:var(--muted);"></p>
+      </div>
+
+      <div class="onboarding-preview" id="onboarding-preview" hidden></div>
+
+      <button class="btn" id="na-guardar" style="margin-top:20px;">Guardar alumno</button>
+    </section>
+
+    <!-- ---------- EQUIPO ---------- -->
+    <section class="view" id="view-equipo" hidden>
+      <h2>Equipo</h2>
+      <p class="desc">Miembros con acceso a esta aplicación.</p>
+
+      <div class="team-list" id="team-list"></div>
+
+      <div id="team-error" class="error-msg" hidden></div>
+      <div id="team-ok" class="success-msg" hidden></div>
+
+      <div class="team-form">
+        <h3 style="margin-top:0;font-size:15px;">Añadir miembro del equipo</h3>
+        <div class="field">
+          <label>Nombre</label>
+          <input id="team-nombre" type="text" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input id="team-email" type="email" />
+        </div>
+        <button class="btn" id="team-add-btn">Añadir y enviar invitación</button>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px;">
+          Se creará su cuenta y recibirá un email para configurar su propia contraseña.
+        </p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modal ficha de alumno -->
+<div class="modal-overlay" id="student-modal" hidden>
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close-btn">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- mammoth.js: convierte el .docx de onboarding a texto plano en el navegador -->
+<script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
+
+<script type="module">
+// ============================================================================
+// CONFIGURACIÓN DE FIREBASE
+// Sustituye estos valores por los de TU proyecto de Firebase:
+// Firebase console → ⚙️ Configuración del proyecto → tus apps → SDK setup and configuration
+// Estos valores son PÚBLICOS por diseño (no son secretos); la seguridad real
+// la dan las reglas de Firestore y de Authentication, no ocultar esta config.
+// ============================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCAZxrWIVX2uXwydVmRh9DdDb-kj9OSggs",
+  authDomain: "seguimiento-alumnos-1113e.firebaseapp.com",
+  projectId: "seguimiento-alumnos-1113e",
+  storageBucket: "seguimiento-alumnos-1113e.firebasestorage.app",
+  messagingSenderId: "303156566388",
+  appId: "1:303156566388:web:2146b953e6ec08c5feb421"
+};
+
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
+  sendPasswordResetEmail, createUserWithEmailAndPassword, signOut as secondarySignOut,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc,
+  onSnapshot, serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ============================================================================
+// ESQUEMA DEL CUESTIONARIO DE ONBOARDING (debe coincidir con el .docx)
+// ============================================================================
+const ONBOARDING_SECTIONS = [
+  { key: "historialFormacion", title: "1. Historial formativo", fields: [
+    { key: "tiempoFormandose", label: "¿Cuánto tiempo llevas formándote en trading de forma seria?" },
+    { key: "academias", label: "¿Por qué academias, formaciones o mentores has pasado?" },
+    { key: "estilos", label: "¿Qué estilos has trabajado antes? (price action, SMC, ICT, volumen, Wyckoff, indicadores…)" },
+    { key: "profundidadMetodologia", label: "¿Has profundizado en una metodología o has ido saltando entre varias?" },
+  ]},
+  { key: "operativaActual", title: "2. Tu operativa actual", fields: [
+    { key: "estrategia", label: "¿Qué estrategia usas ahora?" },
+    { key: "activos", label: "¿Qué activos operas y en qué sesiones?" },
+    { key: "temporalidades", label: "¿Qué temporalidades usas para analizar y cuál para ejecutar?" },
+    { key: "condicionesEntrada", label: "¿Qué condiciones deben cumplirse sí o sí para entrar en una operación?" },
+    { key: "invalidaciones", label: "¿Qué invalida una entrada para ti?" },
+    { key: "erroresFrecuentes", label: "¿Qué tipo de operación sabes que no deberías tomar pero a veces acabas tomando?" },
+  ]},
+  { key: "ejecucionReal", title: "3. Ejecución real", fields: [
+    { key: "operacionesPorSemana", label: "¿Cuántas operaciones haces de media por día y por semana?" },
+    { key: "checklist", label: "¿Tienes un checklist antes de entrar?" },
+    { key: "errorRepetido", label: "¿Cuál es el error de ejecución que más repites y cuándo aparece?" },
+    { key: "tras2Stops", label: "¿Qué haces tras 2 stops seguidos?" },
+    { key: "idealVsReal", label: "¿Cuál es la diferencia entre tu operativa ideal y tu operativa real?" },
+  ]},
+  { key: "gestionRiesgo", title: "4. Gestión del riesgo", fields: [
+    { key: "riesgoPorOperacion", label: "¿Qué % arriesgas por operación y cuál es tu riesgo máximo diario?" },
+    { key: "moverStopBE", label: "¿Mueves el stop a break even o tomas parciales?" },
+    { key: "riesgoConsistente", label: "¿Respetas siempre el mismo riesgo o lo cambias según cómo te sientes?" },
+    { key: "rotoGestion", label: "¿Has roto tu gestión de riesgo algún día?" },
+  ]},
+  { key: "claridadActual", title: "5. Claridad actual", fields: [
+    { key: "registroWinrateRR", label: "¿Tienes registro de tus últimas operaciones? Winrate y ratio R aproximado." },
+    { key: "problemaPrincipal", label: "¿Crees que tu problema principal es de estrategia, ejecución o gestión?" },
+    { key: "ultimos10Trades", label: "De tus últimos 10 trades, ¿cuántos han sido correctos según tu plan?" },
+    { key: "mayorFallo", label: "En una sola frase: ¿cuál es el mayor fallo de tu operativa ahora mismo?" },
+  ]},
+];
+
+const ESTADOS = ["NUEVO", "PRIMER_SEGUIMIENTO", "SEGUNDO_SEGUIMIENTO", "COMPLETADO"];
+const ESTADO_META = {
+  NUEVO: { color: "azul", label: "Alumno nuevo", boton: "Empezar seguimiento" },
+  PRIMER_SEGUIMIENTO: { color: "morado", label: "Primer seguimiento", boton: "Primer seguimiento completado" },
+  SEGUNDO_SEGUIMIENTO: { color: "amarillo", label: "Segundo seguimiento", boton: "Seguimiento completado" },
+  COMPLETADO: { color: "verde", label: "Seguimiento completado", boton: null },
+};
+
+// ============================================================================
+// UTILIDADES DE FECHA
+// ============================================================================
+function nowIso() { return new Date().toISOString(); }
+function addMonthsIso(iso, months) {
+  const d = new Date(iso);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString();
+}
+function fmtDate(iso) {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+}
+function fmtCountdown(iso) {
+  const d = new Date(iso);
+  const diffDays = Math.round((d - new Date()) / 86400000);
+  if (diffDays < 0) return "Ya toca";
+  if (diffDays === 0) return "Hoy";
+  if (diffDays === 1) return "Mañana";
+  if (diffDays < 30) return `en ${diffDays} días`;
+  const months = Math.round(diffDays / 30);
+  return `en ${months} ${months === 1 ? "mes" : "meses"}`;
+}
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ============================================================================
+// ESTADO EN MEMORIA
+// ============================================================================
+let allStudents = [];   // se llena vía onSnapshot
+let allTeam = [];        // se llena vía onSnapshot
+let currentUserDoc = null;
+let studentsUnsub = null;
+let teamUnsub = null;
+let parsedOnboardingData = null; // datos extraídos del .docx pendientes de guardar
+
+// ============================================================================
+// LOGIN / SESIÓN
+// ============================================================================
+const loginScreen = document.getElementById("login-screen");
+const appShell = document.getElementById("app-shell");
+const loginForm = document.getElementById("login-form");
+const loginError = document.getElementById("login-error");
+const loginOk = document.getElementById("login-ok");
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginError.hidden = true;
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    loginError.textContent = "Email o contraseña incorrectos.";
+    loginError.hidden = false;
+  }
+});
+
+document.getElementById("forgot-btn").addEventListener("click", async () => {
+  const email = document.getElementById("login-email").value.trim();
+  loginError.hidden = true; loginOk.hidden = true;
+  if (!email) {
+    loginError.textContent = "Escribe primero tu email arriba.";
+    loginError.hidden = false;
+    return;
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    loginOk.textContent = "Te hemos enviado un email para restablecer la contraseña.";
+    loginOk.hidden = false;
+  } catch (err) {
+    loginError.textContent = "No se ha podido enviar el email. Revisa la dirección.";
+    loginError.hidden = false;
+  }
+});
+
+document.getElementById("logout-btn").addEventListener("click", () => signOut(auth));
+
+onAuthStateChanged(auth, async (user) => {
+  if (studentsUnsub) { studentsUnsub(); studentsUnsub = null; }
+  if (teamUnsub) { teamUnsub(); teamUnsub = null; }
+
+  if (!user) {
+    currentUserDoc = null;
+    loginScreen.hidden = false;
+    appShell.hidden = true;
+    return;
+  }
+
+  const memberSnap = await getDoc(doc(db, "teamMembers", user.uid));
+  if (!memberSnap.exists()) {
+    loginError.textContent = "Tu cuenta no tiene acceso a esta aplicación. Contacta con el administrador.";
+    loginError.hidden = false;
+    await signOut(auth);
+    return;
+  }
+
+  currentUserDoc = { uid: user.uid, ...memberSnap.data() };
+  document.getElementById("who-am-i").textContent = `${currentUserDoc.name} · ${currentUserDoc.email}`;
+  loginScreen.hidden = true;
+  appShell.hidden = false;
+
+  studentsUnsub = onSnapshot(collection(db, "students"), (snap) => {
+    allStudents = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderDashboard();
+    renderKanban();
+    renderCalendar();
+  });
+
+  teamUnsub = onSnapshot(collection(db, "teamMembers"), (snap) => {
+    allTeam = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderTeam();
+  });
+
+  showView("dashboard");
+});
+
+// ============================================================================
+// NAVEGACIÓN ENTRE VISTAS
+// ============================================================================
+function showView(name) {
+  document.querySelectorAll(".view").forEach((v) => (v.hidden = true));
+  document.getElementById(`view-${name}`).hidden = false;
+  document.querySelectorAll(".nav-link[data-view]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === name);
+  });
+  if (name === "calendario") renderCalendar();
+}
+document.querySelectorAll("[data-view]").forEach((btn) => {
+  btn.addEventListener("click", () => showView(btn.dataset.view));
+});
+
+// ============================================================================
+// DASHBOARD
+// ============================================================================
+function renderDashboard() {
+  const counts = { NUEVO: 0, PRIMER_SEGUIMIENTO: 0, SEGUNDO_SEGUIMIENTO: 0, COMPLETADO: 0 };
+  allStudents.forEach((s) => { if (counts[s.estado] !== undefined) counts[s.estado]++; });
+
+  document.getElementById("kpi-nuevo").textContent = counts.NUEVO;
+  document.getElementById("kpi-primero").textContent = counts.PRIMER_SEGUIMIENTO;
+  document.getElementById("kpi-segundo").textContent = counts.SEGUNDO_SEGUIMIENTO;
+  document.getElementById("kpi-completado").textContent = counts.COMPLETADO;
+  document.getElementById("kpi-total").textContent = allStudents.length;
+  document.getElementById("kpi-activos").textContent = counts.PRIMER_SEGUIMIENTO + counts.SEGUNDO_SEGUIMIENTO;
+
+  // --- Gráfica: alumnos nuevos por mes (últimos 6 meses) ---
+  const meses = [];
+  const hoy = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    meses.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: new Intl.DateTimeFormat("es-ES", { month: "short" }).format(d), count: 0 });
+  }
+  allStudents.forEach((s) => {
+    if (!s.fechaAlta) return;
+    const d = new Date(s.fechaAlta);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const m = meses.find((m) => m.key === key);
+    if (m) m.count++;
+  });
+  const maxMes = Math.max(1, ...meses.map((m) => m.count));
+  document.getElementById("chart-por-mes").innerHTML = meses.map((m) => `
+    <div class="bar-col">
+      <div class="bar" style="height:${(m.count / maxMes) * 100}%;background:var(--azul);">
+        <span class="val-lbl">${m.count}</span>
+      </div>
+      <div class="cat-lbl">${escapeHtml(m.label)}</div>
+    </div>`).join("");
+
+  // --- Gráfica: distribución por etapa ---
+  const maxEtapa = Math.max(1, ...Object.values(counts));
+  document.getElementById("chart-por-etapa").innerHTML = ESTADOS.map((estado) => {
+    const meta = ESTADO_META[estado];
+    return `
+    <div class="bar-col">
+      <div class="bar" style="height:${(counts[estado] / maxEtapa) * 100}%;background:var(--${meta.color});">
+        <span class="val-lbl">${counts[estado]}</span>
+      </div>
+      <div class="cat-lbl">${meta.label}</div>
+    </div>`;
+  }).join("");
+
+  // --- Próximos seguimientos ---
+  const proximos = allStudents
+    .filter((s) => s.estado === "SEGUNDO_SEGUIMIENTO" && s.fechaSegundoSeguimientoProgramada)
+    .sort((a, b) => new Date(a.fechaSegundoSeguimientoProgramada) - new Date(b.fechaSegundoSeguimientoProgramada))
+    .slice(0, 10);
+  const list = document.getElementById("proximos-list");
+  if (proximos.length === 0) {
+    list.innerHTML = `<p style="color:var(--muted);font-size:13.5px;">No hay segundos seguimientos programados.</p>`;
+  } else {
+    list.innerHTML = proximos.map((s) => `
+      <div class="proximo-item">
+        <span class="nombre">${escapeHtml(s.nombreCompleto)}</span>
+        <span class="cuando">${fmtDate(s.fechaSegundoSeguimientoProgramada)} · ${fmtCountdown(s.fechaSegundoSeguimientoProgramada)}</span>
+      </div>`).join("");
+  }
+}
+
+// ============================================================================
+// ALUMNOS (KANBAN)
+// ============================================================================
+document.getElementById("search-alumnos").addEventListener("input", renderKanban);
+
+function renderKanban() {
+  const term = document.getElementById("search-alumnos").value.trim().toLowerCase();
+  ESTADOS.forEach((estado) => {
+    const list = allStudents
+      .filter((s) => s.estado === estado)
+      .filter((s) => !term || s.nombreCompleto?.toLowerCase().includes(term))
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    document.getElementById(`count-${estado}`).textContent = list.length;
+    const col = document.getElementById(`col-${estado}`);
+    if (list.length === 0) {
+      col.innerHTML = `<div class="empty-col">Sin alumnos</div>`;
+      return;
+    }
+    const meta = ESTADO_META[estado];
+    col.innerHTML = list.map((s) => `
+      <div class="student-card" data-id="${s.id}">
+        <div class="nombre">${escapeHtml(s.nombreCompleto)}</div>
+        <div class="meta">${dateLabelFor(estado, s)}</div>
+        ${meta.boton ? `<button class="btn small block avanzar-btn" data-id="${s.id}" data-estado="${estado}">${meta.boton}</button>` : ""}
+      </div>`).join("");
+  });
+
+  document.querySelectorAll(".student-card").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".avanzar-btn")) return;
+      openStudentModal(card.dataset.id);
+    });
+  });
+  document.querySelectorAll(".avanzar-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      avanzarEtapa(btn.dataset.id, btn.dataset.estado);
+    });
+  });
+}
+
+function dateLabelFor(estado, s) {
+  if (estado === "NUEVO") return `Alta: ${fmtDate(s.fechaAlta)}`;
+  if (estado === "PRIMER_SEGUIMIENTO") return `Inicio: ${fmtDate(s.fechaInicioSeguimiento)}`;
+  if (estado === "SEGUNDO_SEGUIMIENTO") return `Programado: ${fmtDate(s.fechaSegundoSeguimientoProgramada)}`;
+  return `Completado: ${fmtDate(s.fechaCompletado)}`;
+}
+
+async function avanzarEtapa(id, estadoActual) {
+  const ref = doc(db, "students", id);
+  const now = nowIso();
+  if (estadoActual === "NUEVO") {
+    await updateDoc(ref, { estado: "PRIMER_SEGUIMIENTO", fechaInicioSeguimiento: now, updatedAt: now });
+  } else if (estadoActual === "PRIMER_SEGUIMIENTO") {
+    await updateDoc(ref, {
+      estado: "SEGUNDO_SEGUIMIENTO",
+      fechaPrimerSeguimientoHecho: now,
+      fechaSegundoSeguimientoProgramada: addMonthsIso(now, 3),
+      updatedAt: now,
+    });
+  } else if (estadoActual === "SEGUNDO_SEGUIMIENTO") {
+    await updateDoc(ref, { estado: "COMPLETADO", fechaCompletado: now, updatedAt: now });
+  }
+}
+
+// ============================================================================
+// FICHA DE ALUMNO (MODAL)
+// ============================================================================
+const studentModal = document.getElementById("student-modal");
+document.getElementById("modal-close-btn").addEventListener("click", () => (studentModal.hidden = true));
+studentModal.addEventListener("click", (e) => { if (e.target === studentModal) studentModal.hidden = true; });
+
+function openStudentModal(id) {
+  const s = allStudents.find((x) => x.id === id);
+  if (!s) return;
+  const meta = ESTADO_META[s.estado];
+
+  let sectionsHtml = "";
+  ONBOARDING_SECTIONS.forEach((section) => {
+    const data = s[section.key] || {};
+    const hasAny = section.fields.some((f) => data[f.key]);
+    if (!hasAny) return;
+    sectionsHtml += `<div class="onboarding-section"><h4>${section.title}</h4>`;
+    section.fields.forEach((f) => {
+      if (!data[f.key]) return;
+      sectionsHtml += `<div class="onboarding-field"><label>${escapeHtml(f.label)}</label>${escapeHtml(data[f.key])}</div>`;
+    });
+    sectionsHtml += `</div>`;
+  });
+  if (!sectionsHtml) sectionsHtml = `<p style="color:var(--muted);font-size:13px;">No hay cuestionario de onboarding para este alumno.</p>`;
+
+  document.getElementById("modal-content").innerHTML = `
+    <h3>${escapeHtml(s.nombreCompleto)}</h3>
+    <p style="margin:2px 0 14px;"><span class="badge ${meta.color}">${meta.label}</span></p>
+    <div class="form-grid" style="margin-bottom:16px;">
+      <div><strong style="font-size:12px;color:var(--muted);">Email</strong><div>${escapeHtml(s.email) || "—"}</div></div>
+      <div><strong style="font-size:12px;color:var(--muted);">Teléfono</strong><div>${escapeHtml(s.telefono) || "—"}</div></div>
+      <div><strong style="font-size:12px;color:var(--muted);">Tiempo en trading</strong><div>${escapeHtml(s.tiempoTotalTrading) || "—"}</div></div>
+      <div><strong style="font-size:12px;color:var(--muted);">Registrado por</strong><div>${escapeHtml(s.registradoPorNombre) || "—"}</div></div>
+      <div><strong style="font-size:12px;color:var(--muted);">Fecha de alta</strong><div>${fmtDate(s.fechaAlta)}</div></div>
+      <div><strong style="font-size:12px;color:var(--muted);">Próximo/último hito</strong><div>${dateLabelFor(s.estado, s)}</div></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;" />
+    <h4 style="margin:0 0 10px;">Cuestionario de onboarding</h4>
+    ${sectionsHtml}
+    ${meta.boton ? `<button class="btn" style="margin-top:16px;" id="modal-avanzar-btn">${meta.boton}</button>` : ""}
+  `;
+  const advBtn = document.getElementById("modal-avanzar-btn");
+  if (advBtn) advBtn.addEventListener("click", async () => { await avanzarEtapa(s.id, s.estado); studentModal.hidden = true; });
+
+  studentModal.hidden = false;
+}
+
+// ============================================================================
+// CALENDARIO
+// ============================================================================
+let calYear, calMonth;
+(function initCalDate() { const d = new Date(); calYear = d.getFullYear(); calMonth = d.getMonth(); })();
+
+document.getElementById("cal-prev").addEventListener("click", () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); });
+document.getElementById("cal-next").addEventListener("click", () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
+document.getElementById("cal-hoy").addEventListener("click", () => { const d = new Date(); calYear = d.getFullYear(); calMonth = d.getMonth(); renderCalendar(); });
+
+function renderCalendar() {
+  const grid = document.getElementById("cal-grid");
+  if (!grid) return;
+  const monthLabel = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(new Date(calYear, calMonth, 1));
+  document.getElementById("cal-mes-lbl").textContent = monthLabel;
+
+  const dows = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  let html = dows.map((d) => `<div class="cal-dow">${d}</div>`).join("");
+
+  const firstOfMonth = new Date(calYear, calMonth, 1);
+  const startOffset = (firstOfMonth.getDay() + 6) % 7; // lunes=0
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
+  const todayStr = new Date().toDateString();
+
+  const eventsByDay = {}; // "YYYY-M-D" -> [nombres]
+  allStudents.forEach((s) => {
+    if (s.fechaSegundoSeguimientoProgramada) {
+      const d = new Date(s.fechaSegundoSeguimientoProgramada);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      (eventsByDay[key] = eventsByDay[key] || []).push(s);
+    }
+  });
+
+  const cells = [];
+  for (let i = startOffset - 1; i >= 0; i--) {
+    cells.push({ day: daysInPrevMonth - i, outside: true });
+  }
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, outside: false });
+  let nextMonthDay = 1;
+  while (cells.length % 7 !== 0) cells.push({ day: nextMonthDay++, outside: true, isTrailing: true });
+
+  cells.forEach((cell) => {
+    if (cell.outside) {
+      html += `<div class="cal-day outside"><div class="num">${cell.day}</div></div>`;
+      return;
+    }
+    const cellDate = new Date(calYear, calMonth, cell.day);
+    const key = `${calYear}-${calMonth}-${cell.day}`;
+    const events = eventsByDay[key] || [];
+    const isToday = cellDate.toDateString() === todayStr;
+    html += `<div class="cal-day${isToday ? " today" : ""}">
+      <div class="num">${cell.day}</div>
+      ${events.map((s) => `<div class="cal-chip" data-id="${s.id}" title="${escapeHtml(s.nombreCompleto)}">${escapeHtml(s.nombreCompleto)}</div>`).join("")}
+    </div>`;
+  });
+
+  grid.innerHTML = html;
+  grid.querySelectorAll(".cal-chip").forEach((chip) => {
+    chip.addEventListener("click", () => openStudentModal(chip.dataset.id));
+  });
+}
+
+// ============================================================================
+// NUEVO ALUMNO — subida y parseo del .docx de onboarding
+// ============================================================================
+const naFileInput = document.getElementById("na-file");
+const uploadBox = document.getElementById("upload-box");
+document.getElementById("na-file-btn").addEventListener("click", () => naFileInput.click());
+naFileInput.addEventListener("change", () => { if (naFileInput.files[0]) parseOnboardingFile(naFileInput.files[0]); });
+
+["dragover", "dragleave", "drop"].forEach((evt) => {
+  uploadBox.addEventListener(evt, (e) => { e.preventDefault(); uploadBox.classList.toggle("dragover", evt === "dragover"); });
+});
+uploadBox.addEventListener("drop", (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file) parseOnboardingFile(file);
+});
+
+function looksLikeQuestion(line) { return line.includes("¿") || line.trim().endsWith("?"); }
+function looksLikeSectionHeader(line) {
+  const m = line.trim().match(/^([1-5])[.)]\s*\S/);
+  return m ? Number(m[1]) : null;
+}
+
+function parseOnboardingText(rawText) {
+  const lines = rawText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  let nombreCompleto = "", tiempoTotalTrading = "";
+  const data = {};
+  ONBOARDING_SECTIONS.forEach((s) => { data[s.key] = {}; s.fields.forEach((f) => (data[s.key][f.key] = "")); });
+
+  let currentSection = null, fieldIndex = -1, pending = [];
+  function flush() {
+    if (currentSection && fieldIndex >= 0 && fieldIndex < currentSection.fields.length && pending.length > 0) {
+      const field = currentSection.fields[fieldIndex];
+      const rec = data[currentSection.key];
+      rec[field.key] = [rec[field.key], pending.join(" ")].filter(Boolean).join(" ");
+    }
+    pending = [];
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^nombre y apellidos$/i.test(line)) { nombreCompleto = lines[i + 1]?.trim() ?? ""; continue; }
+    if (/^tiempo total en trading$/i.test(line)) { tiempoTotalTrading = lines[i + 1]?.trim() ?? ""; continue; }
+
+    const sectionNumber = looksLikeSectionHeader(line);
+    if (sectionNumber && ONBOARDING_SECTIONS[sectionNumber - 1]) {
+      flush();
+      currentSection = ONBOARDING_SECTIONS[sectionNumber - 1];
+      fieldIndex = -1;
+      continue;
+    }
+    if (!currentSection) continue;
+    if (looksLikeQuestion(line)) { flush(); fieldIndex += 1; continue; }
+    if (fieldIndex >= 0) pending.push(line);
+  }
+  flush();
+  return { nombreCompleto, tiempoTotalTrading, data };
+}
+
+async function parseOnboardingFile(file) {
+  document.getElementById("na-file-name").textContent = `Procesando "${file.name}"…`;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const { value: rawText } = await window.mammoth.extractRawText({ arrayBuffer });
+    const parsed = parseOnboardingText(rawText);
+    parsedOnboardingData = parsed.data;
+
+    if (parsed.nombreCompleto) document.getElementById("na-nombre").value = parsed.nombreCompleto;
+    if (parsed.tiempoTotalTrading) document.getElementById("na-tiempo-trading").value = parsed.tiempoTotalTrading;
+
+    renderOnboardingPreview(parsed.data);
+    document.getElementById("na-file-name").textContent = `Cargado: ${file.name}. Revisa y corrige los datos si hace falta.`;
+  } catch (err) {
+    document.getElementById("na-file-name").textContent = "";
+    const errBox = document.getElementById("na-error");
+    errBox.textContent = "No se ha podido leer el documento. Asegúrate de que es un .docx válido.";
+    errBox.hidden = false;
+  }
+}
+
+function renderOnboardingPreview(data) {
+  const box = document.getElementById("onboarding-preview");
+  box.hidden = false;
+  box.innerHTML = `<h3 style="font-size:15px;">Datos extraídos del onboarding (editables)</h3>` + ONBOARDING_SECTIONS.map((section) => `
+    <div class="onboarding-section">
+      <h4>${section.title}</h4>
+      ${section.fields.map((f) => `
+        <div class="onboarding-field">
+          <label>${escapeHtml(f.label)}</label>
+          <textarea data-section="${section.key}" data-field="${f.key}">${escapeHtml(data[section.key]?.[f.key] || "")}</textarea>
+        </div>`).join("")}
+    </div>`).join("");
+}
+
+document.getElementById("na-guardar").addEventListener("click", async () => {
+  const errBox = document.getElementById("na-error");
+  const okBox = document.getElementById("na-ok");
+  errBox.hidden = true; okBox.hidden = true;
+
+  const nombreCompleto = document.getElementById("na-nombre").value.trim();
+  if (!nombreCompleto) {
+    errBox.textContent = "El nombre completo es obligatorio.";
+    errBox.hidden = false;
+    return;
+  }
+
+  const onboarding = {};
+  ONBOARDING_SECTIONS.forEach((s) => { onboarding[s.key] = {}; s.fields.forEach((f) => (onboarding[s.key][f.key] = "")); });
+  document.querySelectorAll("#onboarding-preview textarea").forEach((ta) => {
+    onboarding[ta.dataset.section][ta.dataset.field] = ta.value.trim();
+  });
+
+  const now = nowIso();
+  try {
+    await addDoc(collection(db, "students"), {
+      nombreCompleto,
+      email: document.getElementById("na-email").value.trim() || null,
+      telefono: document.getElementById("na-telefono").value.trim() || null,
+      tiempoTotalTrading: document.getElementById("na-tiempo-trading").value.trim() || null,
+      estado: "NUEVO",
+      fechaAlta: now,
+      fechaInicioSeguimiento: null,
+      fechaPrimerSeguimientoHecho: null,
+      fechaSegundoSeguimientoProgramada: null,
+      fechaCompletado: null,
+      ...onboarding,
+      registradoPorNombre: currentUserDoc?.name || "—",
+      registradoPorUid: currentUserDoc?.uid || null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    okBox.textContent = `Alumno "${nombreCompleto}" registrado correctamente.`;
+    okBox.hidden = false;
+    ["na-nombre", "na-email", "na-telefono", "na-tiempo-trading", "na-file-name"].forEach((id) => (document.getElementById(id).value = ""));
+    document.getElementById("na-file-name").textContent = "";
+    document.getElementById("onboarding-preview").hidden = true;
+    document.getElementById("onboarding-preview").innerHTML = "";
+    naFileInput.value = "";
+    parsedOnboardingData = null;
+  } catch (err) {
+    errBox.textContent = "No se ha podido guardar el alumno. Inténtalo de nuevo.";
+    errBox.hidden = false;
+  }
+});
+
+// ============================================================================
+// EQUIPO
+// ============================================================================
+function renderTeam() {
+  const list = document.getElementById("team-list");
+  if (allTeam.length === 0) {
+    list.innerHTML = `<p style="color:var(--muted);font-size:13.5px;">No hay miembros todavía.</p>`;
+    return;
+  }
+  list.innerHTML = allTeam.map((m) => `
+    <div class="team-item">
+      <div class="info"><strong>${escapeHtml(m.name)}</strong><span>${escapeHtml(m.email)}</span></div>
+    </div>`).join("");
+}
+
+document.getElementById("team-add-btn").addEventListener("click", async () => {
+  const errBox = document.getElementById("team-error");
+  const okBox = document.getElementById("team-ok");
+  errBox.hidden = true; okBox.hidden = true;
+
+  const name = document.getElementById("team-nombre").value.trim();
+  const email = document.getElementById("team-email").value.trim();
+  if (!name || !email) {
+    errBox.textContent = "Rellena nombre y email.";
+    errBox.hidden = false;
+    return;
+  }
+
+  const btn = document.getElementById("team-add-btn");
+  btn.disabled = true;
+  // Usamos una segunda instancia de Firebase App solo para crear la cuenta del
+  // nuevo miembro, así no se cierra la sesión de quien lo está dando de alta.
+  const secondaryApp = initializeApp(firebaseConfig, "secondary-" + Date.now());
+  const secondaryAuth = getAuth(secondaryApp);
+  try {
+    const tempPassword = crypto.randomUUID();
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, tempPassword);
+    await secondarySignOut(secondaryAuth);
+
+    await setDoc(doc(db, "teamMembers", cred.user.uid), {
+      name, email, createdAt: serverTimestamp(),
+    });
+
+    await sendPasswordResetEmail(auth, email);
+
+    okBox.textContent = `Cuenta creada para ${name}. Se le ha enviado un email a ${email} para configurar su contraseña.`;
+    okBox.hidden = false;
+    document.getElementById("team-nombre").value = "";
+    document.getElementById("team-email").value = "";
+  } catch (err) {
+    errBox.textContent = err.code === "auth/email-already-in-use"
+      ? "Ya existe una cuenta con ese email."
+      : "No se ha podido crear la cuenta. Inténtalo de nuevo.";
+    errBox.hidden = false;
+  } finally {
+    btn.disabled = false;
+    await deleteApp(secondaryApp);
+  }
+});
+</script>
+</body>
+</html>
