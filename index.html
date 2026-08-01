@@ -302,7 +302,7 @@
     <!-- ---------- NUEVO ALUMNO ---------- -->
     <section class="view" id="view-nuevo-alumno" hidden>
       <h2>Nuevo alumno</h2>
-      <p class="desc">Rellena los datos básicos y sube el documento de onboarding (.docx) para extraer el resto automáticamente.</p>
+      <p class="desc">Escribe el nombre y sube el documento de onboarding (.pdf) para extraer el resto automáticamente.</p>
 
       <div id="na-error" class="error-msg" hidden></div>
       <div id="na-ok" class="success-msg" hidden></div>
@@ -313,26 +313,14 @@
           <input id="na-nombre" type="text" />
         </div>
         <div class="field">
-          <label>Email</label>
-          <input id="na-email" type="email" />
-        </div>
-        <div class="field">
-          <label>Teléfono</label>
-          <input id="na-telefono" type="text" />
-        </div>
-        <div class="field">
-          <label>Tiempo total en trading</label>
-          <input id="na-tiempo-trading" type="text" />
-        </div>
-        <div class="field">
           <label>Fecha de alta</label>
           <input id="na-fecha-alta" type="date" />
         </div>
       </div>
 
       <div class="upload-box" id="upload-box">
-        <p style="margin:0 0 10px;font-size:14px;">Arrastra aquí el <strong>.docx</strong> de onboarding o</p>
-        <input type="file" id="na-file" accept=".docx" style="display:none;" />
+        <p style="margin:0 0 10px;font-size:14px;">Arrastra aquí el <strong>.pdf</strong> de onboarding o</p>
+        <input type="file" id="na-file" accept=".pdf" style="display:none;" />
         <button type="button" class="btn secondary" id="na-file-btn">Elegir archivo</button>
         <p id="na-file-name" style="margin:10px 0 0;font-size:12.5px;color:var(--muted);"></p>
       </div>
@@ -386,8 +374,8 @@
   </div>
 </div>
 
-<!-- mammoth.js: convierte el .docx de onboarding a texto plano en el navegador -->
-<script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<!-- pdf.js: extrae el texto del .pdf de onboarding en el navegador -->
+<script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 
 <script type="module">
 // ============================================================================
@@ -909,9 +897,6 @@ function openStudentModal(id) {
     <h3>${escapeHtml(s.nombreCompleto)}</h3>
     <p style="margin:2px 0 14px;"><span class="badge ${meta.color}">${meta.label}</span></p>
     <div class="form-grid" style="margin-bottom:16px;">
-      <div><strong style="font-size:12px;color:var(--muted);">Email</strong><div>${escapeHtml(s.email) || "—"}</div></div>
-      <div><strong style="font-size:12px;color:var(--muted);">Teléfono</strong><div>${escapeHtml(s.telefono) || "—"}</div></div>
-      <div><strong style="font-size:12px;color:var(--muted);">Tiempo en trading</strong><div>${escapeHtml(s.tiempoTotalTrading) || "—"}</div></div>
       <div><strong style="font-size:12px;color:var(--muted);">Registrado por</strong><div>${escapeHtml(s.registradoPorNombre) || "—"}</div></div>
       <div><strong style="font-size:12px;color:var(--muted);">Fecha de alta</strong><div>${fmtDate(s.fechaAlta)}</div></div>
       <div><strong style="font-size:12px;color:var(--muted);">Próximo/último hito</strong><div>${dateLabelFor(s.estado, s)}</div></div>
@@ -1020,7 +1005,7 @@ function looksLikeSectionHeader(line) {
 
 function parseOnboardingText(rawText) {
   const lines = rawText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
-  let nombreCompleto = "", tiempoTotalTrading = "";
+  let nombreCompleto = "";
   const data = {};
   ONBOARDING_SECTIONS.forEach((s) => { data[s.key] = {}; s.fields.forEach((f) => (data[s.key][f.key] = "")); });
 
@@ -1037,7 +1022,6 @@ function parseOnboardingText(rawText) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (/^nombre y apellidos$/i.test(line)) { nombreCompleto = lines[i + 1]?.trim() ?? ""; continue; }
-    if (/^tiempo total en trading$/i.test(line)) { tiempoTotalTrading = lines[i + 1]?.trim() ?? ""; continue; }
 
     const sectionNumber = looksLikeSectionHeader(line);
     if (sectionNumber && ONBOARDING_SECTIONS[sectionNumber - 1]) {
@@ -1051,26 +1035,62 @@ function parseOnboardingText(rawText) {
     if (fieldIndex >= 0) pending.push(line);
   }
   flush();
-  return { nombreCompleto, tiempoTotalTrading, data };
+  return { nombreCompleto, data };
+}
+
+// Extrae el texto de un PDF reconstruyendo líneas a partir de la posición de
+// cada fragmento de texto (pdf.js no separa por líneas por defecto).
+async function extractPdfText(arrayBuffer) {
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+  }
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const allLines = [];
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const items = content.items
+      .filter((it) => it.str.trim().length > 0)
+      .map((it) => ({ text: it.str, x: it.transform[4], y: it.transform[5] }))
+      .sort((a, b) => b.y - a.y || a.x - b.x);
+
+    let currentLine = [];
+    let currentY = null;
+    const flushLine = () => {
+      if (currentLine.length) allLines.push(currentLine.map((it) => it.text).join(" ").replace(/\s+/g, " ").trim());
+      currentLine = [];
+    };
+    items.forEach((it) => {
+      if (currentY === null || Math.abs(it.y - currentY) < 3) {
+        currentLine.push(it);
+        currentY = currentY === null ? it.y : currentY;
+      } else {
+        flushLine();
+        currentLine = [it];
+        currentY = it.y;
+      }
+    });
+    flushLine();
+  }
+  return allLines.join("\n");
 }
 
 async function parseOnboardingFile(file) {
   document.getElementById("na-file-name").textContent = `Procesando "${file.name}"…`;
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const { value: rawText } = await window.mammoth.extractRawText({ arrayBuffer });
+    const rawText = await extractPdfText(arrayBuffer);
     const parsed = parseOnboardingText(rawText);
     parsedOnboardingData = parsed.data;
 
     if (parsed.nombreCompleto) document.getElementById("na-nombre").value = parsed.nombreCompleto;
-    if (parsed.tiempoTotalTrading) document.getElementById("na-tiempo-trading").value = parsed.tiempoTotalTrading;
 
     renderOnboardingPreview(parsed.data);
     document.getElementById("na-file-name").textContent = `Cargado: ${file.name}. Revisa y corrige los datos si hace falta.`;
   } catch (err) {
     document.getElementById("na-file-name").textContent = "";
     const errBox = document.getElementById("na-error");
-    errBox.textContent = "No se ha podido leer el documento. Asegúrate de que es un .docx válido.";
+    errBox.textContent = "No se ha podido leer el documento. Asegúrate de que es un .pdf válido.";
     errBox.hidden = false;
   }
 }
@@ -1112,9 +1132,6 @@ document.getElementById("na-guardar").addEventListener("click", async () => {
   try {
     await addDoc(collection(db, "students"), {
       nombreCompleto,
-      email: document.getElementById("na-email").value.trim() || null,
-      telefono: document.getElementById("na-telefono").value.trim() || null,
-      tiempoTotalTrading: document.getElementById("na-tiempo-trading").value.trim() || null,
       estado: "NUEVO",
       fechaAlta: fechaAltaInput ? dateInputToIso(fechaAltaInput) : now,
       fechaInicioSeguimiento: null,
@@ -1130,7 +1147,7 @@ document.getElementById("na-guardar").addEventListener("click", async () => {
 
     okBox.textContent = `Alumno "${nombreCompleto}" registrado correctamente.`;
     okBox.hidden = false;
-    ["na-nombre", "na-email", "na-telefono", "na-tiempo-trading", "na-file-name"].forEach((id) => (document.getElementById(id).value = ""));
+    ["na-nombre", "na-file-name"].forEach((id) => (document.getElementById(id).value = ""));
     document.getElementById("na-file-name").textContent = "";
     document.getElementById("na-fecha-alta").value = todayDateInput();
     document.getElementById("onboarding-preview").hidden = true;
