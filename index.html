@@ -1045,14 +1045,25 @@ const studentModal = document.getElementById("student-modal");
 document.getElementById("modal-close-btn").addEventListener("click", () => (studentModal.hidden = true));
 studentModal.addEventListener("click", (e) => { if (e.target === studentModal) studentModal.hidden = true; });
 
-function openStudentModal(id) {
-  const s = allStudents.find((x) => x.id === id);
-  if (!s) return;
-  const meta = ESTADO_META[s.estado];
+// Construyen el bloque "Resumen" y el detalle de preguntas/respuestas a
+// partir de un objeto con la misma forma que OnboardingData (se usa tanto
+// para la ficha del alumno guardado como para la vista previa del PDF antes
+// de guardar).
+function buildResumenHtml(dataObj) {
+  const resumenItems = RESUMEN_FIELDS
+    .map((f) => ({ label: f.label, value: dataObj[f.section]?.[f.field] }))
+    .filter((f) => f.value);
+  if (!resumenItems.length) return "";
+  return `<div class="resumen-box">
+      <h4>Resumen</h4>
+      ${resumenItems.map((f) => `<div class="item"><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(f.value)}</div>`).join("")}
+    </div>`;
+}
 
+function buildSectionsHtml(dataObj) {
   let sectionsHtml = "";
   ONBOARDING_SECTIONS.forEach((section) => {
-    const data = s[section.key] || {};
+    const data = dataObj[section.key] || {};
     const hasAny = section.fields.some((f) => data[f.key]);
     if (!hasAny) return;
     sectionsHtml += `<div class="onboarding-section"><h4>${section.title}</h4>`;
@@ -1062,17 +1073,16 @@ function openStudentModal(id) {
     });
     sectionsHtml += `</div>`;
   });
-  if (!sectionsHtml) sectionsHtml = `<p style="color:var(--muted);font-size:13px;">No hay cuestionario de onboarding para este alumno.</p>`;
+  return sectionsHtml;
+}
 
-  const resumenItems = RESUMEN_FIELDS
-    .map((f) => ({ label: f.label, value: s[f.section]?.[f.field] }))
-    .filter((f) => f.value);
-  const resumenHtml = resumenItems.length
-    ? `<div class="resumen-box">
-        <h4>Resumen</h4>
-        ${resumenItems.map((f) => `<div class="item"><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(f.value)}</div>`).join("")}
-      </div>`
-    : "";
+function openStudentModal(id) {
+  const s = allStudents.find((x) => x.id === id);
+  if (!s) return;
+  const meta = ESTADO_META[s.estado];
+
+  const sectionsHtml = buildSectionsHtml(s) || `<p style="color:var(--muted);font-size:13px;">No hay cuestionario de onboarding para este alumno.</p>`;
+  const resumenHtml = buildResumenHtml(s);
 
   document.getElementById("modal-content").innerHTML = `
     <h3>${escapeHtml(s.nombreCompleto)}</h3>
@@ -1270,7 +1280,7 @@ async function parseOnboardingFile(file) {
     if (parsed.nombreCompleto) document.getElementById("na-nombre").value = parsed.nombreCompleto;
 
     renderOnboardingPreview(parsed.data);
-    document.getElementById("na-file-name").textContent = `Cargado: ${file.name}. Revisa y corrige los datos si hace falta.`;
+    document.getElementById("na-file-name").textContent = `Documento leído: ${file.name}.`;
   } catch (err) {
     document.getElementById("na-file-name").textContent = "";
     const errBox = document.getElementById("na-error");
@@ -1282,15 +1292,9 @@ async function parseOnboardingFile(file) {
 function renderOnboardingPreview(data) {
   const box = document.getElementById("onboarding-preview");
   box.hidden = false;
-  box.innerHTML = `<h3 style="font-size:15px;">Datos extraídos del onboarding (editables)</h3>` + ONBOARDING_SECTIONS.map((section) => `
-    <div class="onboarding-section">
-      <h4>${section.title}</h4>
-      ${section.fields.map((f) => `
-        <div class="onboarding-field">
-          <label>${escapeHtml(f.label)}</label>
-          <textarea data-section="${section.key}" data-field="${f.key}">${escapeHtml(data[section.key]?.[f.key] || "")}</textarea>
-        </div>`).join("")}
-    </div>`).join("");
+  const resumenHtml = buildResumenHtml(data);
+  const sectionsHtml = buildSectionsHtml(data) || `<p style="color:var(--muted);font-size:13px;">No se han detectado respuestas en el documento.</p>`;
+  box.innerHTML = `<h3 style="font-size:15px;margin:0 0 12px;">Resumen del documento</h3>${resumenHtml}${sectionsHtml}`;
 }
 
 document.getElementById("na-guardar").addEventListener("click", async () => {
@@ -1306,9 +1310,9 @@ document.getElementById("na-guardar").addEventListener("click", async () => {
   }
 
   const onboarding = {};
-  ONBOARDING_SECTIONS.forEach((s) => { onboarding[s.key] = {}; s.fields.forEach((f) => (onboarding[s.key][f.key] = "")); });
-  document.querySelectorAll("#onboarding-preview textarea").forEach((ta) => {
-    onboarding[ta.dataset.section][ta.dataset.field] = ta.value.trim();
+  ONBOARDING_SECTIONS.forEach((s) => {
+    onboarding[s.key] = {};
+    s.fields.forEach((f) => { onboarding[s.key][f.key] = parsedOnboardingData?.[s.key]?.[f.key] || ""; });
   });
 
   const now = nowIso();
