@@ -133,6 +133,14 @@
   .resumen-box .item strong{color:#334155;}
   .empty-col{color:var(--muted2);font-size:12.5px;text-align:center;padding:16px 4px;}
 
+  /* ---------- Lista de alumnos ---------- */
+  .alumno-row{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer;}
+  .alumno-row:hover{border-color:#94a3b8;}
+  .alumno-row .nombre{font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .alumno-row .fecha{font-size:12.5px;color:var(--muted);white-space:nowrap;}
+  .alumno-row .delete-btn{background:none;border:none;color:var(--muted2);font-size:15px;line-height:1;padding:4px 6px;border-radius:4px;flex-shrink:0;}
+  .alumno-row .delete-btn:hover{color:var(--danger);background:#fef2f2;}
+
   /* ---------- Calendario ---------- */
   .cal-nav{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
   .cal-nav .mes-lbl{font-weight:700;font-size:16px;min-width:170px;text-align:center;text-transform:capitalize;}
@@ -216,6 +224,7 @@
     <nav>
       <button class="nav-link" data-view="dashboard">▦ Dashboard</button>
       <button class="nav-link" data-view="alumnos">👥 Alumnos</button>
+      <button class="nav-link" data-view="lista-alumnos">📋 Lista de alumnos</button>
       <button class="nav-link" data-view="calendario">📅 Calendario</button>
       <button class="nav-link" data-view="nuevo-alumno">➕ Nuevo alumno</button>
       <button class="nav-link" data-view="equipo">⚙️ Equipo</button>
@@ -291,6 +300,13 @@
           <div id="col-COMPLETADO"></div>
         </div>
       </div>
+    </section>
+
+    <!-- ---------- LISTA DE ALUMNOS ---------- -->
+    <section class="view" id="view-lista-alumnos" hidden>
+      <h2>Lista de alumnos</h2>
+      <p class="desc">Todos los alumnos, del más reciente al más antiguo.</p>
+      <div id="lista-alumnos-content"></div>
     </section>
 
     <!-- ---------- CALENDARIO ---------- -->
@@ -639,6 +655,7 @@ onAuthStateChanged(auth, async (user) => {
     allStudents = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderDashboard();
     renderKanban();
+    renderListaAlumnos();
     renderCalendar();
   });
 
@@ -839,6 +856,44 @@ function dateLabelFor(estado, s) {
   if (estado === "PRIMER_SEGUIMIENTO") return `Inicio: ${fmtDate(s.fechaInicioSeguimiento)}`;
   if (estado === "SEGUNDO_SEGUIMIENTO") return `Programado: ${fmtDate(s.fechaSegundoSeguimientoProgramada)}`;
   return `Completado: ${fmtDate(s.fechaCompletado)}`;
+}
+
+// ============================================================================
+// LISTA DE ALUMNOS (orden de llegada, más reciente arriba)
+// ============================================================================
+function renderListaAlumnos() {
+  const box = document.getElementById("lista-alumnos-content");
+  if (!box) return;
+  const list = [...allStudents].sort((a, b) => new Date(b.fechaAlta || 0) - new Date(a.fechaAlta || 0));
+
+  if (list.length === 0) {
+    box.innerHTML = `<p style="color:var(--muted);font-size:13.5px;">No hay alumnos todavía.</p>`;
+    return;
+  }
+
+  box.innerHTML = list.map((s) => {
+    const meta = ESTADO_META[s.estado];
+    return `
+    <div class="alumno-row" data-id="${s.id}">
+      <span class="badge ${meta.color}">${meta.label}</span>
+      <span class="nombre">${escapeHtml(s.nombreCompleto)}</span>
+      <span class="fecha">${fmtDate(s.fechaAlta)}</span>
+      <button class="delete-btn" data-id="${s.id}" data-nombre="${escapeHtml(s.nombreCompleto)}" title="Eliminar alumno">✕</button>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll(".alumno-row").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".delete-btn")) return;
+      openStudentModal(row.dataset.id);
+    });
+  });
+  box.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      eliminarAlumno(btn.dataset.id, btn.dataset.nombre);
+    });
+  });
 }
 
 async function avanzarEtapa(id, estadoActual) {
