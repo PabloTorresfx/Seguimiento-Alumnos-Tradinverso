@@ -186,7 +186,9 @@
   .cal-day.outside{background:var(--bg);color:var(--muted2);}
   .cal-day .num{font-weight:700;margin-bottom:4px;}
   .cal-day.today .num{color:var(--azul);}
-  .cal-chip{background:var(--amarillo-bg);color:var(--amarillo);border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;margin-bottom:3px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cal-chip{background:var(--amarillo-bg);color:var(--amarillo);border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;margin-bottom:3px;cursor:grab;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cal-chip.dragging{opacity:.4;}
+  .cal-day.drag-over{outline:2px dashed var(--azul);outline-offset:-2px;background:var(--azul-bg);}
 
   /* ---------- Nuevo alumno ---------- */
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:640px;}
@@ -1145,32 +1147,58 @@ function renderCalendar() {
     }
   });
 
+  const prevMonthYear = calMonth === 0 ? calYear - 1 : calYear;
+  const prevMonth = calMonth === 0 ? 11 : calMonth - 1;
+  const nextMonthYear = calMonth === 11 ? calYear + 1 : calYear;
+  const nextMonth = calMonth === 11 ? 0 : calMonth + 1;
+
   const cells = [];
   for (let i = startOffset - 1; i >= 0; i--) {
-    cells.push({ day: daysInPrevMonth - i, outside: true });
+    cells.push({ day: daysInPrevMonth - i, outside: true, year: prevMonthYear, month: prevMonth });
   }
-  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, outside: false });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, outside: false, year: calYear, month: calMonth });
   let nextMonthDay = 1;
-  while (cells.length % 7 !== 0) cells.push({ day: nextMonthDay++, outside: true, isTrailing: true });
+  while (cells.length % 7 !== 0) cells.push({ day: nextMonthDay++, outside: true, year: nextMonthYear, month: nextMonth });
 
   cells.forEach((cell) => {
+    const cellDate = new Date(cell.year, cell.month, cell.day);
+    const dateStr = isoToDateInput(cellDate.toISOString());
     if (cell.outside) {
-      html += `<div class="cal-day outside"><div class="num">${cell.day}</div></div>`;
+      html += `<div class="cal-day outside" data-date="${dateStr}"><div class="num">${cell.day}</div></div>`;
       return;
     }
-    const cellDate = new Date(calYear, calMonth, cell.day);
-    const key = `${calYear}-${calMonth}-${cell.day}`;
+    const key = `${cell.year}-${cell.month}-${cell.day}`;
     const events = eventsByDay[key] || [];
     const isToday = cellDate.toDateString() === todayStr;
-    html += `<div class="cal-day${isToday ? " today" : ""}">
+    html += `<div class="cal-day${isToday ? " today" : ""}" data-date="${dateStr}">
       <div class="num">${cell.day}</div>
-      ${events.map((s) => `<div class="cal-chip" data-id="${s.id}" title="${escapeHtml(s.nombreCompleto)}">${escapeHtml(s.nombreCompleto)}</div>`).join("")}
+      ${events.map((s) => `<div class="cal-chip" data-id="${s.id}" draggable="true" title="Arrastra para cambiar la fecha — ${escapeHtml(s.nombreCompleto)}">${escapeHtml(s.nombreCompleto)}</div>`).join("")}
     </div>`;
   });
 
   grid.innerHTML = html;
   grid.querySelectorAll(".cal-chip").forEach((chip) => {
     chip.addEventListener("click", () => openStudentModal(chip.dataset.id));
+    chip.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", chip.dataset.id);
+      e.dataTransfer.effectAllowed = "move";
+      chip.classList.add("dragging");
+    });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging"));
+  });
+  grid.querySelectorAll(".cal-day").forEach((day) => {
+    day.addEventListener("dragover", (e) => { e.preventDefault(); day.classList.add("drag-over"); });
+    day.addEventListener("dragleave", () => day.classList.remove("drag-over"));
+    day.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      day.classList.remove("drag-over");
+      const id = e.dataTransfer.getData("text/plain");
+      if (!id) return;
+      await updateDoc(doc(db, "students", id), {
+        fechaSegundoSeguimientoProgramada: dateInputToIso(day.dataset.date),
+        updatedAt: nowIso(),
+      });
+    });
   });
 }
 
