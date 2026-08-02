@@ -119,11 +119,18 @@
   .kanban-col.morado{border-top:3px solid var(--morado);}
   .kanban-col.amarillo{border-top:3px solid var(--amarillo);}
   .kanban-col.verde{border-top:3px solid var(--verde);}
-  .student-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;}
+  .student-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;position:relative;}
   .student-card:hover{border-color:#94a3b8;}
-  .student-card .nombre{font-weight:700;font-size:14px;margin-bottom:2px;}
+  .student-card .nombre{font-weight:700;font-size:14px;margin-bottom:2px;padding-right:20px;}
   .student-card .meta{font-size:12px;color:var(--muted);margin-bottom:8px;}
   .student-card .btn{width:100%;}
+  .student-card .delete-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted2);font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;}
+  .student-card .delete-btn:hover{color:var(--danger);background:#fef2f2;}
+  .resumen-box{background:var(--accent-bg);border:1px solid #c7d2fe;border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+  .resumen-box h4{margin:0 0 8px;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;}
+  .resumen-box .item{margin-bottom:6px;font-size:13.5px;}
+  .resumen-box .item:last-child{margin-bottom:0;}
+  .resumen-box .item strong{color:#334155;}
   .empty-col{color:var(--muted2);font-size:12.5px;text-align:center;padding:16px 4px;}
 
   /* ---------- Calendario ---------- */
@@ -400,7 +407,7 @@ import {
   sendPasswordResetEmail, createUserWithEmailAndPassword, signOut as secondarySignOut,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc,
+  getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
   onSnapshot, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
@@ -454,6 +461,14 @@ const ESTADO_META = {
   SEGUNDO_SEGUIMIENTO: { color: "amarillo", label: "Segundo seguimiento", boton: "Seguimiento completado" },
   COMPLETADO: { color: "verde", label: "Seguimiento completado", boton: null },
 };
+
+// Campos destacados para el bloque "Resumen" de la ficha del alumno: un
+// vistazo rápido antes de entrar en el detalle completo del cuestionario.
+const RESUMEN_FIELDS = [
+  { section: "historialFormacion", field: "tiempoFormandose", label: "Tiempo formándose" },
+  { section: "operativaActual", field: "estrategia", label: "Estrategia actual" },
+  { section: "claridadActual", field: "mayorFallo", label: "Mayor fallo actual" },
+];
 
 // ============================================================================
 // UTILIDADES DE FECHA
@@ -786,6 +801,7 @@ function renderKanban() {
     const meta = ESTADO_META[estado];
     col.innerHTML = list.map((s) => `
       <div class="student-card" data-id="${s.id}">
+        <button class="delete-btn" data-id="${s.id}" data-nombre="${escapeHtml(s.nombreCompleto)}" title="Eliminar alumno">✕</button>
         <div class="nombre">${escapeHtml(s.nombreCompleto)}</div>
         <div class="meta">${dateLabelFor(estado, s)}</div>
         ${meta.boton ? `<button class="btn small block avanzar-btn" data-id="${s.id}" data-estado="${estado}">${meta.boton}</button>` : ""}
@@ -794,7 +810,7 @@ function renderKanban() {
 
   document.querySelectorAll(".student-card").forEach((card) => {
     card.addEventListener("click", (e) => {
-      if (e.target.closest(".avanzar-btn")) return;
+      if (e.target.closest(".avanzar-btn") || e.target.closest(".delete-btn")) return;
       openStudentModal(card.dataset.id);
     });
   });
@@ -804,6 +820,18 @@ function renderKanban() {
       avanzarEtapa(btn.dataset.id, btn.dataset.estado);
     });
   });
+  document.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      eliminarAlumno(btn.dataset.id, btn.dataset.nombre);
+    });
+  });
+}
+
+async function eliminarAlumno(id, nombre) {
+  const ok = confirm(`¿Eliminar a "${nombre}"? Esta acción no se puede deshacer.`);
+  if (!ok) return;
+  await deleteDoc(doc(db, "students", id));
 }
 
 function dateLabelFor(estado, s) {
@@ -893,6 +921,16 @@ function openStudentModal(id) {
   });
   if (!sectionsHtml) sectionsHtml = `<p style="color:var(--muted);font-size:13px;">No hay cuestionario de onboarding para este alumno.</p>`;
 
+  const resumenItems = RESUMEN_FIELDS
+    .map((f) => ({ label: f.label, value: s[f.section]?.[f.field] }))
+    .filter((f) => f.value);
+  const resumenHtml = resumenItems.length
+    ? `<div class="resumen-box">
+        <h4>Resumen</h4>
+        ${resumenItems.map((f) => `<div class="item"><strong>${escapeHtml(f.label)}:</strong> ${escapeHtml(f.value)}</div>`).join("")}
+      </div>`
+    : "";
+
   document.getElementById("modal-content").innerHTML = `
     <h3>${escapeHtml(s.nombreCompleto)}</h3>
     <p style="margin:2px 0 14px;"><span class="badge ${meta.color}">${meta.label}</span></p>
@@ -901,18 +939,21 @@ function openStudentModal(id) {
       <div><strong style="font-size:12px;color:var(--muted);">Fecha de alta</strong><div>${fmtDate(s.fechaAlta)}</div></div>
       <div><strong style="font-size:12px;color:var(--muted);">Próximo/último hito</strong><div>${dateLabelFor(s.estado, s)}</div></div>
     </div>
+    ${resumenHtml}
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;" />
     <h4 style="margin:0 0 10px;">Cuestionario de onboarding</h4>
     ${sectionsHtml}
-    <div style="display:flex;gap:10px;margin-top:16px;">
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
       ${meta.boton ? `<button class="btn" id="modal-avanzar-btn">${meta.boton}</button>` : ""}
       ${s.estado === "SEGUNDO_SEGUIMIENTO" ? `<button class="btn secondary" id="modal-reprogramar-btn">Cambiar fecha programada</button>` : ""}
+      <button class="btn danger" id="modal-eliminar-btn">Eliminar alumno</button>
     </div>
   `;
   const advBtn = document.getElementById("modal-avanzar-btn");
   if (advBtn) advBtn.addEventListener("click", async () => { studentModal.hidden = true; await avanzarEtapa(s.id, s.estado); });
   const reprogramarBtn = document.getElementById("modal-reprogramar-btn");
   if (reprogramarBtn) reprogramarBtn.addEventListener("click", async () => { studentModal.hidden = true; await reprogramarSegundoSeguimiento(s.id, s.fechaSegundoSeguimientoProgramada); });
+  document.getElementById("modal-eliminar-btn").addEventListener("click", async () => { studentModal.hidden = true; await eliminarAlumno(s.id, s.nombreCompleto); });
 
   studentModal.hidden = false;
 }
