@@ -202,9 +202,12 @@
 
   /* ---------- Equipo ---------- */
   .team-list{max-width:520px;margin-bottom:22px;}
-  .team-item{display:flex;align-items:center;justify-content:between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;}
+  .team-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;}
+  .team-item .info{flex:1;min-width:140px;}
   .team-item .info strong{display:block;font-size:14px;color:var(--text);}
   .team-item .info span{font-size:12.5px;color:var(--muted);}
+  .team-item.inactive{border-style:dashed;opacity:.75;}
+  .team-item .actions{display:flex;gap:6px;flex-shrink:0;}
   .team-form{max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
 
   /* ---------- Modal ---------- */
@@ -428,6 +431,11 @@
       <p class="desc">Miembros con acceso a esta aplicación.</p>
 
       <div class="team-list" id="team-list"></div>
+
+      <div id="team-eliminados-wrap" hidden style="max-width:520px;margin-bottom:22px;">
+        <p style="font-size:12.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px;">Miembros eliminados</p>
+        <div class="team-list" id="team-list-eliminados"></div>
+      </div>
 
       <div id="team-error" class="error-msg" hidden></div>
       <div id="team-ok" class="success-msg" hidden></div>
@@ -727,7 +735,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   const memberSnap = await getDoc(doc(db, "teamMembers", user.uid));
-  if (!memberSnap.exists()) {
+  if (!memberSnap.exists() || memberSnap.data().activo === false) {
     loginError.textContent = "Tu cuenta no tiene acceso a esta aplicación. Contacta con el administrador.";
     loginError.hidden = false;
     await signOut(auth);
@@ -1381,14 +1389,82 @@ document.getElementById("na-guardar").addEventListener("click", async () => {
 // ============================================================================
 function renderTeam() {
   const list = document.getElementById("team-list");
-  if (allTeam.length === 0) {
+  const wrapEliminados = document.getElementById("team-eliminados-wrap");
+  const listEliminados = document.getElementById("team-list-eliminados");
+
+  const activos = allTeam.filter((m) => m.activo !== false);
+  const eliminados = allTeam.filter((m) => m.activo === false);
+
+  if (activos.length === 0) {
     list.innerHTML = `<p style="color:var(--muted);font-size:13.5px;">No hay miembros todavía.</p>`;
+  } else {
+    list.innerHTML = activos.map((m) => `
+      <div class="team-item">
+        <div class="info"><strong>${escapeHtml(m.name)}</strong><span>${escapeHtml(m.email)}</span></div>
+        <div class="actions">
+          <button class="btn secondary small reenviar-btn" data-email="${escapeHtml(m.email)}">Reenviar invitación</button>
+          <button class="btn danger small eliminar-miembro-btn" data-id="${m.id}" data-nombre="${escapeHtml(m.name)}">Eliminar</button>
+        </div>
+      </div>`).join("");
+  }
+
+  wrapEliminados.hidden = eliminados.length === 0;
+  listEliminados.innerHTML = eliminados.map((m) => `
+    <div class="team-item inactive">
+      <div class="info"><strong>${escapeHtml(m.name)}</strong><span>${escapeHtml(m.email)}</span></div>
+      <div class="actions">
+        <button class="btn secondary small reactivar-btn" data-id="${m.id}">Volver a añadir</button>
+      </div>
+    </div>`).join("");
+
+  list.querySelectorAll(".reenviar-btn").forEach((btn) => {
+    btn.addEventListener("click", () => reenviarInvitacion(btn.dataset.email));
+  });
+  list.querySelectorAll(".eliminar-miembro-btn").forEach((btn) => {
+    btn.addEventListener("click", () => eliminarMiembro(btn.dataset.id, btn.dataset.nombre));
+  });
+  listEliminados.querySelectorAll(".reactivar-btn").forEach((btn) => {
+    btn.addEventListener("click", () => reactivarMiembro(btn.dataset.id));
+  });
+}
+
+async function eliminarMiembro(uid, nombre) {
+  const errBox = document.getElementById("team-error");
+  const okBox = document.getElementById("team-ok");
+  errBox.hidden = true; okBox.hidden = true;
+  if (uid === currentUserDoc?.uid) {
+    errBox.textContent = "No puedes eliminarte a ti mismo.";
+    errBox.hidden = false;
     return;
   }
-  list.innerHTML = allTeam.map((m) => `
-    <div class="team-item">
-      <div class="info"><strong>${escapeHtml(m.name)}</strong><span>${escapeHtml(m.email)}</span></div>
-    </div>`).join("");
+  const ok = confirm(`¿Eliminar a "${nombre}" del equipo? Podrás volver a añadirlo más tarde.`);
+  if (!ok) return;
+  await updateDoc(doc(db, "teamMembers", uid), { activo: false, updatedAt: nowIso() });
+  okBox.textContent = `${nombre} ya no tiene acceso a la aplicación.`;
+  okBox.hidden = false;
+}
+
+async function reactivarMiembro(uid) {
+  const errBox = document.getElementById("team-error");
+  const okBox = document.getElementById("team-ok");
+  errBox.hidden = true; okBox.hidden = true;
+  await updateDoc(doc(db, "teamMembers", uid), { activo: true, updatedAt: nowIso() });
+  okBox.textContent = "Miembro añadido de nuevo al equipo.";
+  okBox.hidden = false;
+}
+
+async function reenviarInvitacion(email) {
+  const errBox = document.getElementById("team-error");
+  const okBox = document.getElementById("team-ok");
+  errBox.hidden = true; okBox.hidden = true;
+  try {
+    await sendPasswordResetEmail(auth, email);
+    okBox.textContent = `Se ha reenviado el email de acceso a ${email}.`;
+    okBox.hidden = false;
+  } catch (err) {
+    errBox.textContent = "No se ha podido reenviar el email. Inténtalo de nuevo.";
+    errBox.hidden = false;
+  }
 }
 
 document.getElementById("team-add-btn").addEventListener("click", async () => {
@@ -1416,7 +1492,7 @@ document.getElementById("team-add-btn").addEventListener("click", async () => {
     await secondarySignOut(secondaryAuth);
 
     await setDoc(doc(db, "teamMembers", cred.user.uid), {
-      name, email, createdAt: serverTimestamp(),
+      name, email, activo: true, createdAt: serverTimestamp(),
     });
 
     await sendPasswordResetEmail(auth, email);
