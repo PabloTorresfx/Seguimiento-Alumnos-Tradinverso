@@ -186,7 +186,12 @@
   .cal-day.outside{background:var(--bg);color:var(--muted2);}
   .cal-day .num{font-weight:700;margin-bottom:4px;}
   .cal-day.today .num{color:var(--azul);}
-  .cal-chip{background:var(--amarillo-bg);color:var(--amarillo);border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;margin-bottom:3px;cursor:grab;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cal-chip{display:flex;align-items:center;gap:4px;border-radius:6px;padding:2px 5px;font-size:11px;font-weight:600;margin-bottom:3px;cursor:grab;}
+  .cal-chip.amarillo{background:var(--amarillo-bg);color:var(--amarillo);}
+  .cal-chip.morado{background:var(--morado-bg);color:var(--morado);}
+  .cal-chip-nombre{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+  .cal-chip-time{flex-shrink:0;background:rgba(0,0,0,.12);border:none;border-radius:4px;padding:0 4px;font-size:10px;font-weight:700;color:inherit;cursor:pointer;line-height:1.5;}
+  .cal-chip-time:hover{background:rgba(0,0,0,.22);}
   .cal-chip.dragging{opacity:.4;}
   .cal-day.drag-over{outline:2px dashed var(--azul);outline-offset:-2px;background:var(--azul-bg);}
 
@@ -638,7 +643,7 @@ function promptDates(title, fields, options = {}) {
       ${fields.map((f) => `
         <div class="field">
           <label>${escapeHtml(f.label)}</label>
-          <input type="date" id="dm-${f.id}" value="${f.value}" />
+          <input type="${f.type || "date"}" id="dm-${f.id}" value="${f.value}" />
         </div>`).join("")}
       <div style="display:flex;gap:8px;margin-top:6px;">
         <button class="btn secondary block" id="dm-cancel">Cancelar</button>
@@ -878,19 +883,25 @@ function renderDashboard() {
   // --- Gráfica: distribución por etapa ---
   document.getElementById("chart-por-etapa").innerHTML = buildDonutChart(counts);
 
-  // --- Próximos seguimientos ---
+  // --- Próximos seguimientos (primer y segundo) ---
   const proximos = allStudents
-    .filter((s) => s.estado === "SEGUNDO_SEGUIMIENTO" && s.fechaSegundoSeguimientoProgramada)
-    .sort((a, b) => new Date(a.fechaSegundoSeguimientoProgramada) - new Date(b.fechaSegundoSeguimientoProgramada))
+    .filter((s) => (s.estado === "PRIMER_SEGUIMIENTO" && s.fechaInicioSeguimiento) || (s.estado === "SEGUNDO_SEGUIMIENTO" && s.fechaSegundoSeguimientoProgramada))
+    .map((s) => ({
+      student: s,
+      fecha: s.estado === "PRIMER_SEGUIMIENTO" ? s.fechaInicioSeguimiento : s.fechaSegundoSeguimientoProgramada,
+      etiqueta: s.estado === "PRIMER_SEGUIMIENTO" ? "1er seg." : "2º seg.",
+      color: s.estado === "PRIMER_SEGUIMIENTO" ? "morado" : "amarillo",
+    }))
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
     .slice(0, 10);
   const list = document.getElementById("proximos-list");
   if (proximos.length === 0) {
-    list.innerHTML = `<p style="color:var(--muted);font-size:13.5px;">No hay segundos seguimientos programados.</p>`;
+    list.innerHTML = `<p style="color:var(--muted);font-size:13.5px;">No hay seguimientos programados.</p>`;
   } else {
-    list.innerHTML = proximos.map((s) => `
+    list.innerHTML = proximos.map((p) => `
       <div class="proximo-item">
-        <span class="nombre">${escapeHtml(s.nombreCompleto)}</span>
-        <span class="cuando">${fmtDate(s.fechaSegundoSeguimientoProgramada)} · ${fmtCountdown(s.fechaSegundoSeguimientoProgramada)}</span>
+        <span class="nombre"><span class="badge ${p.color}" style="margin-right:8px;">${p.etiqueta}</span>${escapeHtml(p.student.nombreCompleto)}</span>
+        <span class="cuando">${fmtDate(p.fecha)}${p.student.horaLlamada ? ` · ${p.student.horaLlamada}h` : ""} · ${fmtCountdown(p.fecha)}</span>
       </div>`).join("");
   }
 }
@@ -950,9 +961,10 @@ async function eliminarAlumno(id, nombre) {
 }
 
 function dateLabelFor(estado, s) {
+  const hora = s.horaLlamada ? ` · ${s.horaLlamada}h` : "";
   if (estado === "NUEVO") return `Alta: ${fmtDate(s.fechaAlta)}`;
-  if (estado === "PRIMER_SEGUIMIENTO") return `Inicio: ${fmtDate(s.fechaInicioSeguimiento)}`;
-  if (estado === "SEGUNDO_SEGUIMIENTO") return `Programado: ${fmtDate(s.fechaSegundoSeguimientoProgramada)}`;
+  if (estado === "PRIMER_SEGUIMIENTO") return `Inicio: ${fmtDate(s.fechaInicioSeguimiento)}${hora}`;
+  if (estado === "SEGUNDO_SEGUIMIENTO") return `Programado: ${fmtDate(s.fechaSegundoSeguimientoProgramada)}${hora}`;
   return `Completado: ${fmtDate(s.fechaCompletado)}`;
 }
 
@@ -1037,13 +1049,26 @@ async function avanzarEtapa(id, estadoActual) {
   }
 }
 
-async function reprogramarSegundoSeguimiento(id, fechaActualIso) {
-  const res = await promptDates("Cambiar fecha del segundo seguimiento", [
-    { id: "programado", label: "Nueva fecha programada", value: isoToDateInput(fechaActualIso) },
+// field: nombre del campo de fecha a cambiar ("fechaInicioSeguimiento" para el
+// primer seguimiento, "fechaSegundoSeguimientoProgramada" para el segundo).
+async function reprogramarCita(id, field, label, fechaActualIso) {
+  const res = await promptDates(`Cambiar fecha — ${label}`, [
+    { id: "fecha", label: "Nueva fecha", value: isoToDateInput(fechaActualIso) },
   ]);
   if (!res) return;
   await updateDoc(doc(db, "students", id), {
-    fechaSegundoSeguimientoProgramada: dateInputToIso(res.programado),
+    [field]: dateInputToIso(res.fecha),
+    updatedAt: nowIso(),
+  });
+}
+
+async function cambiarHoraLlamada(id, horaActual) {
+  const res = await promptDates("Hora de la llamada", [
+    { id: "hora", label: "Hora de la llamada", value: horaActual || "", type: "time" },
+  ]);
+  if (!res) return;
+  await updateDoc(doc(db, "students", id), {
+    horaLlamada: res.hora || null,
     updatedAt: nowIso(),
   });
 }
@@ -1108,14 +1133,22 @@ function openStudentModal(id) {
     ${sectionsHtml}
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
       ${meta.boton ? `<button class="btn" id="modal-avanzar-btn">${meta.boton}</button>` : ""}
+      ${s.estado === "PRIMER_SEGUIMIENTO" ? `<button class="btn secondary" id="modal-reprogramar-btn">Cambiar fecha</button>` : ""}
       ${s.estado === "SEGUNDO_SEGUIMIENTO" ? `<button class="btn secondary" id="modal-reprogramar-btn">Cambiar fecha programada</button>` : ""}
+      ${(s.estado === "PRIMER_SEGUIMIENTO" || s.estado === "SEGUNDO_SEGUIMIENTO") ? `<button class="btn secondary" id="modal-hora-btn">Cambiar hora de la llamada</button>` : ""}
       <button class="btn danger" id="modal-eliminar-btn">Eliminar alumno</button>
     </div>
   `;
   const advBtn = document.getElementById("modal-avanzar-btn");
   if (advBtn) advBtn.addEventListener("click", async () => { studentModal.hidden = true; await avanzarEtapa(s.id, s.estado); });
   const reprogramarBtn = document.getElementById("modal-reprogramar-btn");
-  if (reprogramarBtn) reprogramarBtn.addEventListener("click", async () => { studentModal.hidden = true; await reprogramarSegundoSeguimiento(s.id, s.fechaSegundoSeguimientoProgramada); });
+  if (reprogramarBtn) reprogramarBtn.addEventListener("click", async () => {
+    studentModal.hidden = true;
+    if (s.estado === "PRIMER_SEGUIMIENTO") await reprogramarCita(s.id, "fechaInicioSeguimiento", "primer seguimiento", s.fechaInicioSeguimiento);
+    else await reprogramarCita(s.id, "fechaSegundoSeguimientoProgramada", "segundo seguimiento", s.fechaSegundoSeguimientoProgramada);
+  });
+  const horaBtn = document.getElementById("modal-hora-btn");
+  if (horaBtn) horaBtn.addEventListener("click", async () => { studentModal.hidden = true; await cambiarHoraLlamada(s.id, s.horaLlamada); });
   document.getElementById("modal-eliminar-btn").addEventListener("click", async () => { studentModal.hidden = true; await eliminarAlumno(s.id, s.nombreCompleto); });
 
   studentModal.hidden = false;
@@ -1146,12 +1179,17 @@ function renderCalendar() {
   const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
   const todayStr = new Date().toDateString();
 
-  const eventsByDay = {}; // "YYYY-M-D" -> [nombres]
+  const eventsByDay = {}; // "YYYY-M-D" -> [{ student, field, colorClass }]
   allStudents.forEach((s) => {
-    if (s.fechaSegundoSeguimientoProgramada) {
+    if (s.estado === "PRIMER_SEGUIMIENTO" && s.fechaInicioSeguimiento) {
+      const d = new Date(s.fechaInicioSeguimiento);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      (eventsByDay[key] = eventsByDay[key] || []).push({ student: s, field: "fechaInicioSeguimiento", colorClass: "morado" });
+    }
+    if (s.estado === "SEGUNDO_SEGUIMIENTO" && s.fechaSegundoSeguimientoProgramada) {
       const d = new Date(s.fechaSegundoSeguimientoProgramada);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      (eventsByDay[key] = eventsByDay[key] || []).push(s);
+      (eventsByDay[key] = eventsByDay[key] || []).push({ student: s, field: "fechaSegundoSeguimientoProgramada", colorClass: "amarillo" });
     }
   });
 
@@ -1180,15 +1218,29 @@ function renderCalendar() {
     const isToday = cellDate.toDateString() === todayStr;
     html += `<div class="cal-day${isToday ? " today" : ""}" data-date="${dateStr}">
       <div class="num">${cell.day}</div>
-      ${events.map((s) => `<div class="cal-chip" data-id="${s.id}" draggable="true" title="Arrastra para cambiar la fecha — ${escapeHtml(s.nombreCompleto)}">${escapeHtml(s.nombreCompleto)}</div>`).join("")}
+      ${events.map((ev) => `
+        <div class="cal-chip ${ev.colorClass}" data-id="${ev.student.id}" data-field="${ev.field}" draggable="true" title="Arrastra para cambiar la fecha — ${escapeHtml(ev.student.nombreCompleto)}">
+          <button type="button" class="cal-chip-time" data-id="${ev.student.id}" data-hora="${ev.student.horaLlamada || ""}" draggable="false" title="Poner hora de la llamada">${ev.student.horaLlamada || "🕐"}</button>
+          <span class="cal-chip-nombre">${escapeHtml(ev.student.nombreCompleto)}</span>
+        </div>`).join("")}
     </div>`;
   });
 
   grid.innerHTML = html;
+  grid.querySelectorAll(".cal-chip-time").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await cambiarHoraLlamada(btn.dataset.id, btn.dataset.hora);
+    });
+  });
   grid.querySelectorAll(".cal-chip").forEach((chip) => {
-    chip.addEventListener("click", () => openStudentModal(chip.dataset.id));
+    chip.addEventListener("click", (e) => {
+      if (e.target.closest(".cal-chip-time")) return;
+      openStudentModal(chip.dataset.id);
+    });
     chip.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("text/plain", chip.dataset.id);
+      e.dataTransfer.setData("application/x-field", chip.dataset.field);
       e.dataTransfer.effectAllowed = "move";
       chip.classList.add("dragging");
     });
@@ -1201,9 +1253,10 @@ function renderCalendar() {
       e.preventDefault();
       day.classList.remove("drag-over");
       const id = e.dataTransfer.getData("text/plain");
+      const field = e.dataTransfer.getData("application/x-field") || "fechaSegundoSeguimientoProgramada";
       if (!id) return;
       await updateDoc(doc(db, "students", id), {
-        fechaSegundoSeguimientoProgramada: dateInputToIso(day.dataset.date),
+        [field]: dateInputToIso(day.dataset.date),
         updatedAt: nowIso(),
       });
     });
